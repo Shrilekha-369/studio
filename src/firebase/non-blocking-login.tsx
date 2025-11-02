@@ -50,7 +50,9 @@ export function initiateGoogleSignIn(authInstance: Auth): Promise<UserCredential
      // Allow UI to handle specific error codes like 'popup-closed-by-user'
      // Do not log the error here, as it's expected if the user closes the popup.
      // The calling component will handle whether to show a toast or not.
-     throw error;
+     if (error.code !== 'auth/popup-closed-by-user') {
+      throw error;
+     }
   });
   return promise;
 }
