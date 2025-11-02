@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import type { ClassSchedule } from "@/lib/types";
 import { useState, useEffect } from "react";
-import { useUser, useFirestore, useDoc, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, initiateAnonymousSignIn, useAuth } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import type { UserProfile, Booking } from '@/lib/types';
 import Link from "next/link";
@@ -29,7 +29,6 @@ export function BookingModal({ classInfo }: { classInfo: ClassSchedule }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const firestore = useFirestore();
-  const auth = useAuth();
   const { user, isUserLoading } = useUser();
   const [formPhone, setFormPhone] = useState('');
 
@@ -38,14 +37,6 @@ export function BookingModal({ classInfo }: { classInfo: ClassSchedule }) {
     [firestore, user]
   );
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
-
-  useEffect(() => {
-    if (!isUserLoading && !user) {
-        if(auth) {
-            initiateAnonymousSignIn(auth);
-        }
-    }
-  }, [isUserLoading, user, auth]);
 
   useEffect(() => {
     // Only update phone number from profile if the user hasn't started typing
@@ -57,7 +48,7 @@ export function BookingModal({ classInfo }: { classInfo: ClassSchedule }) {
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!user || user.isAnonymous) {
+    if (!user) {
         toast({
             title: "Please Sign In",
             description: "You must be signed in to book a demo. Please sign up or log in.",
@@ -68,8 +59,8 @@ export function BookingModal({ classInfo }: { classInfo: ClassSchedule }) {
     }
     
     // Update phone number if it has changed and is different from the profile
-    if (userProfile && formPhone !== userProfile.phone) {
-       setDocumentNonBlocking(userProfileRef!, { phone: formPhone }, { merge: true });
+    if (userProfile && formPhone !== userProfile.phone && userProfileRef) {
+       setDocumentNonBlocking(userProfileRef, { phone: formPhone }, { merge: true });
     }
 
     const booking: Omit<Booking, 'id'> = {
@@ -98,7 +89,7 @@ export function BookingModal({ classInfo }: { classInfo: ClassSchedule }) {
 
   const renderContent = () => {
     // Show skeleton while auth state or profile is loading
-    if (isUserLoading || (user && !user.isAnonymous && isProfileLoading)) {
+    if (isUserLoading || (user && !isProfileLoading)) {
         return (
           <div className="space-y-4 p-6">
             <Skeleton className="h-6 w-3/4" />
@@ -125,7 +116,7 @@ export function BookingModal({ classInfo }: { classInfo: ClassSchedule }) {
         )
     }
     
-    if (user && user.isAnonymous) {
+    if (!user) {
         return (
              <DialogHeader className="p-6">
                 <DialogTitle className="font-headline text-primary">Join Us to Book a Demo</DialogTitle>
