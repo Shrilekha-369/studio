@@ -152,21 +152,22 @@ export function ClassScheduleManager() {
   };
   
   const handleDelete = async (id: string) => {
-      if(window.confirm('Are you sure you want to delete this class?')) {
-        const docRef = doc(firestore, 'classSchedules', id);
-        try {
-            await deleteDoc(docRef);
-            toast({ title: 'Success', description: 'Class schedule deleted.' });
-        } catch (error: any) {
-             toast({ 
-                title: 'Deletion Failed', 
-                description: error.message || "Could not delete class schedule.",
-                variant: 'destructive'
-            });
-            console.error("Error deleting document: ", error);
-        }
+    console.log(`Attempting to delete document with ID: ${id}`);
+    if (window.confirm('Are you sure you want to delete this class?')) {
+      const docRef = doc(firestore, 'classSchedules', id);
+      try {
+        await deleteDoc(docRef);
+        toast({ title: 'Success', description: 'Class schedule deleted.' });
+      } catch (error: any) {
+        toast({
+          title: 'Deletion Failed',
+          description: error.message || 'Could not delete class schedule.',
+          variant: 'destructive',
+        });
+        console.error('Error deleting document: ', error);
       }
-  }
+    }
+  };
 
   const openDialog = (schedule?: ClassSchedule) => {
     setEditingSchedule(schedule);
