@@ -89,7 +89,7 @@ export function BookingModal({ classInfo }: { classInfo: ClassSchedule }) {
 
   const renderContent = () => {
     // Show skeleton while auth state or profile is loading
-    if (isUserLoading || (user && !isProfileLoading)) {
+    if (isUserLoading || (user && isProfileLoading)) {
         return (
           <div className="space-y-4 p-6">
             <Skeleton className="h-6 w-3/4" />
