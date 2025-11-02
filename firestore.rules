@@ -56,20 +56,31 @@ service cloud.firestore {
       allow update: if isSignedIn() && isOwner(userId) && resource.data.id == request.resource.data.id;
       allow delete: if isSignedIn() && isExistingOwner(userId);
     }
+    
+    /**
+     * @description Rule for Collection Group Query on 'bookings'.
+     * This allows admins to list all bookings across all users.
+     * @path /bookings/{bookingId}
+     * @allow (list): Admins can list all bookings.
+     */
+    match /{path=**}/bookings/{bookingId} {
+      allow list: if isAdmin();
+      // Individual document operations (get, create, update, delete) are handled below.
+    }
+
 
     /**
-     * @description Controls access to booking information for a specific user. This also includes the collection group query for admins.
+     * @description Controls access to booking information for a specific user.
      * @path /users/{userId}/bookings/{bookingId}
      * @allow (create): A user can create a booking for themselves if the userId matches their auth UID.
-     * @allow (get, list): A user can access their own bookings. Admins can list all bookings via a collection group query.
+     * @allow (get, list): A user can access their own bookings.
      * @allow (update): An admin can update any booking (e.g., to change status).
      * @deny (create): A user cannot create a booking with a userId that does not match their auth UID.
      * @deny (get, update, delete): A user cannot access or modify another user's bookings, except for admins updating.
      * @principle Enforces document ownership for bookings, with admin override for updates and listing.
      */
     match /users/{userId}/bookings/{bookingId} {
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if (isSignedIn() && isOwner(userId)) || isAdmin();
+      allow get, list: if isSignedIn() && isOwner(userId);
       allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
       allow update: if isAdmin() || (isSignedIn() && isOwner(userId) && resource.data.userId == request.resource.data.userId);
       allow delete: if isSignedIn() && isExistingOwner(userId);
