@@ -55,7 +55,7 @@ service cloud.firestore {
        */
       allow get, update: if isOwner(userId);
       allow list: if false; // Explicitly deny listing users for security.
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow create: if isOwner(userId);
       allow delete: if false; // Disallow user profile deletion for now.
 
       /**

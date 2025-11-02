@@ -12,7 +12,6 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PlusCircle, Edit, Trash2, CalendarIcon, RefreshCw } from 'lucide-react';
-import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
@@ -140,6 +139,10 @@ export function ClassScheduleManager() {
 
   const fetchSchedules = async () => {
     setIsLoading(true);
+    if (!firestore) {
+      setIsLoading(false);
+      return;
+    }
     try {
       const q = query(collection(firestore, 'classSchedules'), orderBy('classDate', 'desc'));
       const querySnapshot = await getDocs(q);
@@ -147,6 +150,7 @@ export function ClassScheduleManager() {
       setSchedules(fetchedSchedules);
     } catch (error: any) {
       toast({ title: 'Error fetching schedules', description: error.message, variant: 'destructive' });
+      console.error(error);
     }
     setIsLoading(false);
   };
@@ -157,29 +161,31 @@ export function ClassScheduleManager() {
 
 
   const handleSave = async (data: Omit<ClassSchedule, 'id'> | Partial<ClassSchedule>) => {
+    if (!firestore) return;
     try {
       if (editingSchedule) {
         const docRef = doc(firestore, 'classSchedules', editingSchedule.id);
-        updateDocumentNonBlocking(docRef, data);
+        await updateDoc(docRef, data);
         toast({ title: 'Success', description: 'Class schedule updated.' });
       } else {
-        await addDocumentNonBlocking(collection(firestore, 'classSchedules'), data);
+        await addDoc(collection(firestore, 'classSchedules'), data);
         toast({ title: 'Success', description: 'New class added.' });
       }
       closeDialog();
-      fetchSchedules(); // Refetch after saving
+      fetchSchedules(); 
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     }
   };
   
   const handleDelete = async (id: string) => {
+    if (!firestore) return;
+    console.log(`Attempting to delete document with ID: ${id}`);
     if (window.confirm('Are you sure you want to delete this class?')) {
       try {
-        const docRef = doc(firestore, 'classSchedules', id);
-        await deleteDoc(docRef);
+        await deleteDoc(doc(firestore, 'classSchedules', id));
         toast({ title: 'Success', description: 'Class schedule deleted.' });
-        setSchedules(schedules.filter((s) => s.id !== id));
+        setSchedules((prevSchedules) => prevSchedules.filter((s) => s.id !== id));
       } catch (error: any) {
         toast({
           title: 'Deletion Failed',
