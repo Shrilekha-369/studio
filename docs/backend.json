@@ -1,0 +1,230 @@
+{
+  "entities": {
+    "ClassSchedule": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ClassSchedule",
+      "type": "object",
+      "description": "Represents the schedule of classes offered by the fitness studio.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the class schedule entry."
+        },
+        "className": {
+          "type": "string",
+          "description": "Name of the class (e.g., Yoga, Zumba)."
+        },
+        "instructor": {
+          "type": "string",
+          "description": "Name of the instructor leading the class."
+        },
+        "dayOfWeek": {
+          "type": "string",
+          "description": "Day of the week the class is held (e.g., Monday, Tuesday)."
+        },
+        "startTime": {
+          "type": "string",
+          "description": "Start time of the class (e.g., 09:00, 18:30)."
+        },
+        "durationMinutes": {
+          "type": "number",
+          "description": "Duration of the class in minutes."
+        },
+        "capacity": {
+          "type": "number",
+          "description": "Maximum number of participants allowed in the class."
+        }
+      },
+      "required": [
+        "id",
+        "className",
+        "instructor",
+        "dayOfWeek",
+        "startTime",
+        "durationMinutes",
+        "capacity"
+      ]
+    },
+    "Booking": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Booking",
+      "type": "object",
+      "description": "Represents a booking made by a user for a specific class.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the booking."
+        },
+        "classScheduleId": {
+          "type": "string",
+          "description": "Reference to ClassSchedule. (Relationship: ClassSchedule 1:N Booking)"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N Booking)"
+        },
+        "bookingDate": {
+          "type": "string",
+          "description": "The date the booking was made.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "classScheduleId",
+        "userId",
+        "bookingDate"
+      ]
+    },
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Represents a user profile.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user profile."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "First name of the user."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user.",
+          "format": "email"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Phone number of the user."
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "email"
+      ]
+    },
+    "GalleryItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "GalleryItem",
+      "type": "object",
+      "description": "Represents an item in the gallery showcasing competition wins and venue.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the gallery item."
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the gallery item (e.g., Competition Win 2023)."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the gallery item."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL of the image for the gallery item.",
+          "format": "uri"
+        },
+        "itemType": {
+          "type": "string",
+          "description": "The type of gallery item (e.g., 'competition', 'venue')."
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "imageUrl",
+        "itemType"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/classSchedules/{classScheduleId}",
+        "definition": {
+          "entityName": "ClassSchedule",
+          "schema": {
+            "$ref": "#/backend/entities/ClassSchedule"
+          },
+          "description": "Stores class schedule information. Publicly readable.  Write access restricted to admins (not defined).",
+          "params": [
+            {
+              "name": "classScheduleId",
+              "description": "Unique identifier for the class schedule entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores user profile information.  Accessible only by the user themselves.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "Unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/bookings/{bookingId}",
+        "definition": {
+          "entityName": "Booking",
+          "schema": {
+            "$ref": "#/backend/entities/Booking"
+          },
+          "description": "Stores booking information for a specific user. Only accessible by the user themselves. bookingId is the unique ID of the booking.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "Unique identifier for the user."
+            },
+            {
+              "name": "bookingId",
+              "description": "Unique identifier for the booking."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/galleryItems/{galleryItemId}",
+        "definition": {
+          "entityName": "GalleryItem",
+          "schema": {
+            "$ref": "#/backend/entities/GalleryItem"
+          },
+          "description": "Stores gallery items (images, descriptions). Publicly readable. Write access restricted to admins (not defined).",
+          "params": [
+            {
+              "name": "galleryItemId",
+              "description": "Unique identifier for the gallery item."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to support the One Fitness Studio application, focusing on class schedules, user bookings, user profiles, and a gallery. Authorization Independence is achieved by using path-based ownership for user profiles and bookings, eliminating the need for `get()` calls in security rules. Segregation is employed to isolate user-specific data (profiles and bookings) from global data (class schedules and gallery items).  This approach guarantees that rules will not be filters. Each collection has a homogeneous security posture, enhancing security and simplifying rule management. Bookings are placed in a subcollection of users for clear ownership and simplified security rules. The gallery items and class schedules are global."
+  }
+}

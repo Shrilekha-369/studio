@@ -1,0 +1,115 @@
+/**
+ * @file Firestore Security Rules
+ * @description This ruleset enforces a strict user-ownership model for user profiles and bookings,
+ * and allows public read access to class schedules and gallery items. Write access to class schedules
+ * and gallery items is not defined in this initial prototyping phase.
+ *
+ * Data Structure:
+ * - /classSchedules/{classScheduleId}: Stores class schedule information. Publicly readable, write access is undefined in this version.
+ * - /users/{userId}: Stores user profile information. Only accessible by the user themselves.
+ * - /users/{userId}/bookings/{bookingId}: Stores booking information for a specific user. Only accessible by the user themselves.
+ * - /galleryItems/{galleryItemId}: Stores gallery items (images, descriptions). Publicly readable, write access is undefined in this version.
+ *
+ * Key Security Decisions:
+ * - User listing is disallowed.
+ * - Class schedules and gallery items are publicly readable.
+ * - Write access to class schedules and gallery items is not defined.
+ * - Default security posture for ambiguous relationships is strict owner-only access.
+ *
+ * Denormalization for Authorization:
+ * - The `Booking` entity includes a `userId` field to directly link bookings to users, enabling
+ *   owner-based access control without requiring additional reads.
+ *
+ * Structural Segregation:
+ * - User-specific data (profiles and bookings) is stored under the `/users/{userId}` path,
+ *   while global data (class schedules and gallery items) is stored in top-level collections.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Controls access to class schedule information.
+     * @path /classSchedules/{classScheduleId}
+     * @allow (get, list): Any user can read class schedules.
+     * @deny (create, update, delete): No user can create, update, or delete class schedules in this prototype. Write access is not yet defined.
+     * @principle Allows public read access to class schedules.
+     */
+    match /classSchedules/{classScheduleId} {
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add admin-only write rules when roles are defined.
+    }
+
+    /**
+     * @description Controls access to user profile information.
+     * @path /users/{userId}
+     * @allow (create): A user can create their own profile if the userId matches their auth UID.
+     * @allow (get, update, delete): A user can only access and modify their own profile.
+     * @deny (create): A user cannot create a profile with a userId that does not match their auth UID.
+     * @deny (get, update, delete): A user cannot access or modify another user's profile.
+     * @principle Enforces document ownership for user profiles.
+     */
+    match /users/{userId} {
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false; // User listing is not allowed.
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isSignedIn() && isOwner(userId) && resource.data.id == request.resource.data.id;
+      allow delete: if isSignedIn() && isExistingOwner(userId);
+    }
+
+    /**
+     * @description Controls access to booking information for a specific user.
+     * @path /users/{userId}/bookings/{bookingId}
+     * @allow (create): A user can create a booking for themselves if the userId matches their auth UID.
+     * @allow (get, update, delete): A user can only access and modify their own bookings.
+     * @deny (create): A user cannot create a booking with a userId that does not match their auth UID.
+     * @deny (get, update, delete): A user cannot access or modify another user's bookings.
+     * @principle Enforces document ownership for bookings.
+     */
+    match /users/{userId}/bookings/{bookingId} {
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if isSignedIn() && isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isSignedIn() && isOwner(userId) && resource.data.userId == request.resource.data.userId;
+      allow delete: if isSignedIn() && isExistingOwner(userId);
+    }
+
+    /**
+     * @description Controls access to gallery items.
+     * @path /galleryItems/{galleryItemId}
+     * @allow (get, list): Any user can read gallery items.
+     * @deny (create, update, delete): No user can create, update, or delete gallery items in this prototype. Write access is not yet defined.
+     * @principle Allows public read access to gallery items.
+     */
+    match /galleryItems/{galleryItemId} {
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add admin-only write rules when roles are defined.
+    }
+
+    /**
+     * @description Checks if the user is signed in.
+     * @return {bool} True if the user is signed in, false otherwise.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the user is the owner of the resource.
+     * @param {string} userId The user ID to check.
+     * @return {bool} True if the user is the owner, false otherwise.
+     */
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the user is the owner of the resource and the resource exists.
+     * @param {string} userId The user ID to check.
+     * @return {bool} True if the user is the owner and the resource exists, false otherwise.
+     */
+    function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+    }
+  }
+}
