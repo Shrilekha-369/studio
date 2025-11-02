@@ -2,9 +2,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useCollection, useFirestore, useMemoFirebase, useStorage } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL, type UploadTask } from 'firebase/storage';
 import type { GalleryItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -13,12 +12,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Edit, PlusCircle, Trash2, Upload } from 'lucide-react';
+import { Edit, PlusCircle, Trash2 } from 'lucide-react';
 import Image from 'next/image';
-import { Progress } from '../ui/progress';
 
-
-const GalleryItemForm = ({ item, onSave, closeDialog }: { item?: GalleryItem; onSave: (data: Partial<GalleryItem>, file?: File) => void; closeDialog: () => void }) => {
+const GalleryItemForm = ({ item, onSave, closeDialog }: { item?: GalleryItem; onSave: (data: Partial<GalleryItem>) => void; closeDialog: () => void }) => {
   const { toast } = useToast();
   const [formData, setFormData] = useState<Partial<GalleryItem>>({
     title: item?.title || '',
@@ -26,20 +23,10 @@ const GalleryItemForm = ({ item, onSave, closeDialog }: { item?: GalleryItem; on
     imageUrl: item?.imageUrl || '',
     itemType: item?.itemType || 'venue',
   });
-  const [file, setFile] = useState<File | undefined>(undefined);
-  const [fileName, setFileName] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const selectedFile = e.target.files[0];
-      setFile(selectedFile);
-      setFileName(selectedFile.name);
-    }
   };
 
   const handleSelectChange = (value: 'venue' | 'competition') => {
@@ -48,11 +35,11 @@ const GalleryItemForm = ({ item, onSave, closeDialog }: { item?: GalleryItem; on
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file && !item?.imageUrl) {
-        toast({ title: 'Missing Image', description: 'Please upload an image.', variant: 'destructive' });
+    if (!formData.imageUrl) {
+        toast({ title: 'Missing Image URL', description: 'Please provide an image URL.', variant: 'destructive' });
         return;
     }
-    onSave(formData, file);
+    onSave(formData);
   };
 
   return (
@@ -60,26 +47,13 @@ const GalleryItemForm = ({ item, onSave, closeDialog }: { item?: GalleryItem; on
       <DialogHeader>
         <DialogTitle>{item ? 'Edit' : 'Add'} Gallery Item</DialogTitle>
         <DialogDescription>
-            {item ? 'Update the details for this gallery item.' : 'Upload an image and provide optional details.'}
+            {item ? 'Update the details for this gallery item.' : 'Provide an image URL and optional details.'}
         </DialogDescription>
       </DialogHeader>
       <div className="grid gap-4 py-4">
         <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="image" className="text-right">Image</Label>
-          <div className="col-span-3">
-            <Button asChild variant="outline" className="w-full justify-start font-normal text-muted-foreground">
-              <Label htmlFor="image-upload" className="cursor-pointer">
-                <Upload className="mr-2" />
-                {fileName || 'Choose a file...'}
-              </Label>
-            </Button>
-            <Input id="image-upload" type="file" accept="image/*" onChange={handleFileChange} className="sr-only" />
-            {item?.imageUrl && !file && (
-              <div className="mt-2 text-xs text-muted-foreground">
-                Current image: <a href={item.imageUrl} target="_blank" rel="noopener noreferrer" className="underline">View</a>. Upload to replace.
-              </div>
-            )}
-          </div>
+          <Label htmlFor="imageUrl" className="text-right">Image URL</Label>
+          <Input id="imageUrl" name="imageUrl" value={formData.imageUrl} onChange={handleChange} className="col-span-3" required />
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="title" className="text-right">Title</Label>
@@ -113,63 +87,30 @@ const GalleryItemForm = ({ item, onSave, closeDialog }: { item?: GalleryItem; on
 
 export function GalleryManager() {
   const firestore = useFirestore();
-  const storage = useStorage();
   const { toast } = useToast();
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<GalleryItem | undefined>(undefined);
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
   const galleryItemsRef = useMemoFirebase(() => collection(firestore, 'galleryItems'), [firestore]);
-  const { data: galleryItems, isLoading } = useCollection<GalleryItem>(galleryItemsRef);
+  const { data: galleryItems, isLoading, setData: setGalleryItems } = useCollection<GalleryItem>(galleryItemsRef);
 
-  const handleSave = async (data: Partial<GalleryItem>, file?: File) => {
-    if (!firestore || !storage) return;
-
-    closeDialog();
-
-    // If we are just updating text fields without a new image
-    if (!file) {
-      if (editingItem) {
-        const docRef = doc(firestore, 'galleryItems', editingItem.id);
-        await updateDoc(docRef, data);
-        toast({ title: 'Success', description: 'Gallery item updated.' });
-      }
-      return;
-    }
-
-    // If a file is present, start the upload process.
-    const storageRef = ref(storage, `gallery/${Date.now()}_${file.name}`);
-    const uploadTask = uploadBytesResumable(storageRef, file);
-
-    uploadTask.on('state_changed',
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        setUploadProgress(progress);
-      },
-      (error) => {
-        console.error("Upload failed:", error);
-        toast({ title: 'Upload Failed', description: error.message, variant: 'destructive' });
-        setUploadProgress(null);
-      },
-      async () => {
-        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-        const dataToSave = { ...data, imageUrl: downloadURL };
-        
-        try {
-          if (editingItem) {
-            await updateDoc(doc(firestore, 'galleryItems', editingItem.id), dataToSave);
+  const handleSave = async (data: Partial<GalleryItem>) => {
+    if (!firestore) return;
+    
+    try {
+        if (editingItem) {
+            const docRef = doc(firestore, 'galleryItems', editingItem.id);
+            await updateDoc(docRef, data);
             toast({ title: 'Success', description: 'Gallery item updated.' });
-          } else {
-            await addDoc(collection(firestore, 'galleryItems'), dataToSave);
+        } else {
+            await addDoc(collection(firestore, 'galleryItems'), data);
             toast({ title: 'Success', description: 'Gallery item added.' });
-          }
-        } catch (error: any) {
-          toast({ title: 'Database Error', description: error.message, variant: 'destructive' });
-        } finally {
-          setTimeout(() => setUploadProgress(null), 2000);
         }
-      }
-    );
+        closeDialog();
+        // The useCollection hook will automatically update the UI
+    } catch (error: any) {
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    }
   };
   
   const handleDelete = async (id: string) => {
@@ -178,6 +119,8 @@ export function GalleryManager() {
         try {
             const docRef = doc(firestore, 'galleryItems', id);
             await deleteDoc(docRef);
+            // Optimistically update UI
+            setGalleryItems(prev => prev ? prev.filter(item => item.id !== id) : null);
             toast({ title: 'Success', description: 'Gallery item deleted.' });
         } catch (error: any) {
             toast({ title: 'Deletion Failed', description: error.message, variant: 'destructive' });
@@ -211,13 +154,6 @@ export function GalleryManager() {
         </Dialog>
       </div>
       
-      {uploadProgress !== null && (
-        <div className="my-4 space-y-2">
-          <Label className="text-sm font-medium">Uploading Image...</Label>
-          <Progress value={uploadProgress} className="w-full" />
-        </div>
-      )}
-
       {isLoading && <p className='py-4'>Loading gallery items...</p>}
 
       {!isLoading && (
@@ -251,10 +187,6 @@ export function GalleryManager() {
           </TableBody>
         </Table>
       )}
-
     </div>
   );
 }
-    
-
-    
