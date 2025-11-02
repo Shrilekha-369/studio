@@ -1,6 +1,5 @@
 
 import Link from "next/link";
-import Image from "next/image";
 import { Facebook, Instagram, Twitter } from "lucide-react";
 
 export function Footer() {
@@ -9,7 +8,8 @@ export function Footer() {
       <div className="container max-w-screen-2xl py-8">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/Logo.jpg" alt="One Fitness Logo" width={24} height={24} />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/Logo.jpg" alt="One Fitness Logo" width={24} height={24} />
             <span className="font-headline font-bold text-lg whitespace-nowrap">One Fitness</span>
           </Link>
           <p className="text-sm text-foreground/60 text-center">
