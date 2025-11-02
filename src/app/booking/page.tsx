@@ -9,27 +9,32 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { BookingModal } from "@/components/booking-modal";
 import { Dumbbell, HeartPulse, Bike } from "lucide-react";
+import type { ClassSchedule } from "@/lib/types";
 
-export type ClassInfo = {
-  name: string;
-  instructor: string;
-  time: string;
-  duration: string;
-  level: 'Beginner' | 'Intermediate' | 'Advanced';
-  spots: number;
-  icon: string;
-};
-
-const schedule: ClassInfo[] = [
-  { name: 'Sunrise Yoga', instructor: 'Anna', time: 'Mon 7:00 AM', duration: '60 min', level: 'Beginner', spots: 8, icon: 'Dumbbell' },
-  { name: 'HIIT Power Hour', instructor: 'Mark', time: 'Mon 6:00 PM', duration: '60 min', level: 'Advanced', spots: 3, icon: 'HeartPulse' },
-  { name: 'Rhythm Spin', instructor: 'Chloe', time: 'Tue 5:30 PM', duration: '45 min', level: 'Intermediate', spots: 0, icon: 'Bike' },
-  { name: 'Full Body Strength', instructor: 'David', time: 'Wed 7:00 AM', duration: '60 min', level: 'Intermediate', spots: 5, icon: 'Dumbbell' },
-  { name: 'Restorative Flow', instructor: 'Anna', time: 'Wed 6:30 PM', duration: '75 min', level: 'Beginner', spots: 10, icon: 'Dumbbell' },
-  { name: 'Cycle & Core', instructor: 'Chloe', time: 'Thu 6:00 PM', duration: '45 min', level: 'Intermediate', spots: 2, icon: 'Bike' },
-  { name: 'Weekend Warrior HIIT', instructor: 'Mark', time: 'Sat 9:00 AM', duration: '60 min', level: 'Advanced', spots: 6, icon: 'HeartPulse' },
-  { name: 'Sunday Zen Yoga', instructor: 'Anna', time: 'Sun 10:00 AM', duration: '75 min', level: 'Beginner', spots: 12, icon: 'Dumbbell' },
+const schedule: ClassSchedule[] = [
+  { id: 'yoga-mon-0700', className: 'Sunrise Yoga', instructor: 'Anna', dayOfWeek: 'Monday', startTime: '07:00', durationMinutes: 60, capacity: 15, spotsLeft: 8, icon: 'Dumbbell' },
+  { id: 'hiit-mon-1800', className: 'HIIT Power Hour', instructor: 'Mark', dayOfWeek: 'Monday', startTime: '18:00', durationMinutes: 60, capacity: 10, spotsLeft: 3, icon: 'HeartPulse' },
+  { id: 'spin-tue-1730', className: 'Rhythm Spin', instructor: 'Chloe', dayOfWeek: 'Tuesday', startTime: '17:30', durationMinutes: 45, capacity: 12, spotsLeft: 0, icon: 'Bike' },
+  { id: 'strength-wed-0700', className: 'Full Body Strength', instructor: 'David', dayOfWeek: 'Wednesday', startTime: '07:00', durationMinutes: 60, capacity: 12, spotsLeft: 5, icon: 'Dumbbell' },
+  { id: 'yoga-wed-1830', className: 'Restorative Flow', instructor: 'Anna', dayOfWeek: 'Wednesday', startTime: '18:30', durationMinutes: 75, capacity: 15, spotsLeft: 10, icon: 'Dumbbell' },
+  { id: 'cycle-thu-1800', className: 'Cycle & Core', instructor: 'Chloe', dayOfWeek: 'Thursday', startTime: '18:00', durationMinutes: 45, capacity: 12, spotsLeft: 2, icon: 'Bike' },
+  { id: 'hiit-sat-0900', className: 'Weekend Warrior HIIT', instructor: 'Mark', dayOfWeek: 'Saturday', startTime: '09:00', durationMinutes: 60, capacity: 10, spotsLeft: 6, icon: 'HeartPulse' },
+  { id: 'yoga-sun-1000', className: 'Sunday Zen Yoga', instructor: 'Anna', dayOfWeek: 'Sunday', startTime: '10:00', durationMinutes: 75, capacity: 15, spotsLeft: 12, icon: 'Dumbbell' },
 ];
+
+const getLevel = (className: string) => {
+    if (className.includes('HIIT')) return 'Advanced';
+    if (className.includes('Yoga') || className.includes('Flow')) return 'Beginner';
+    return 'Intermediate';
+}
+
+const formatTime = (day: string, time: string) => {
+    const [hour, minute] = time.split(':');
+    const hourNum = parseInt(hour, 10);
+    const ampm = hourNum >= 12 ? 'PM' : 'AM';
+    const formattedHour = hourNum % 12 === 0 ? 12 : hourNum % 12;
+    return `${day.substring(0,3)} ${formattedHour}:${minute} ${ampm}`;
+}
 
 const iconMap: { [key: string]: React.ElementType } = {
   Dumbbell,
@@ -60,25 +65,26 @@ export default function BookingPage() {
           <TableBody>
             {schedule.map((classInfo) => {
               const IconComponent = iconMap[classInfo.icon];
+              const level = getLevel(classInfo.className);
               return (
-                <TableRow key={classInfo.name + classInfo.time}>
+                <TableRow key={classInfo.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-3">
                       {IconComponent && <IconComponent className="h-5 w-5 text-primary hidden sm:inline-block" />}
-                      {classInfo.name}
+                      {classInfo.className}
                     </div>
                   </TableCell>
                   <TableCell>{classInfo.instructor}</TableCell>
-                  <TableCell>{classInfo.time}</TableCell>
+                  <TableCell>{formatTime(classInfo.dayOfWeek, classInfo.startTime)}</TableCell>
                   <TableCell>
                     <Badge variant={
-                      classInfo.level === 'Beginner' ? 'secondary' :
-                      classInfo.level === 'Intermediate' ? 'default' : 'destructive'
+                      level === 'Beginner' ? 'secondary' :
+                      level === 'Intermediate' ? 'default' : 'destructive'
                     } className="bg-primary/20 text-primary-foreground">
-                      {classInfo.level}
+                      {level}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-center">{classInfo.spots}</TableCell>
+                  <TableCell className="text-center">{classInfo.spotsLeft}</TableCell>
                   <TableCell className="text-right">
                     <BookingModal classInfo={classInfo} />
                   </TableCell>

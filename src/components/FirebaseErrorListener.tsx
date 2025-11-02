@@ -31,6 +31,8 @@ export function FirebaseErrorListener() {
 
   // On re-render, if an error exists in state, throw it.
   if (error) {
+    // Adding a console.error here for better visibility in the browser console during development.
+    console.error("Caught a Firestore permission error:", error);
     throw error;
   }
 
