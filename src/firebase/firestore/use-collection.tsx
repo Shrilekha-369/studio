@@ -20,9 +20,10 @@ export type WithId<T> = T & { id: string };
  * @template T Type of the document data.
  */
 export interface UseCollectionResult<T> {
-  data: WithId<T>[] | null; // Document data with ID, or null.
-  isLoading: boolean;       // True if loading.
-  error: FirestoreError | Error | null; // Error object, or null.
+  data: WithId<T>[] | null;
+  isLoading: boolean;
+  error: FirestoreError | Error | null;
+  setData: React.Dispatch<React.SetStateAction<WithId<T>[] | null>>;
 }
 
 /* Internal implementation of Query:
@@ -57,7 +58,7 @@ export function useCollection<T = any>(
   type StateDataType = ResultItemType[] | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true); // Start loading true
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
@@ -107,5 +108,5 @@ export function useCollection<T = any>(
     throw new Error('useCollection query was not properly memoized using useMemoFirebase. This will cause infinite loops.');
   }
 
-  return { data, isLoading, error };
+  return { data, isLoading, error, setData };
 }

@@ -135,9 +135,9 @@ export function ClassScheduleManager() {
   const { toast } = useToast();
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<ClassSchedule | undefined>(undefined);
-
+  
   const schedulesQuery = useMemoFirebase(() => query(collection(firestore, 'classSchedules'), orderBy('classDate', 'desc')), [firestore]);
-  const { data: schedules, isLoading } = useCollection<ClassSchedule>(schedulesQuery);
+  const { data: schedules, isLoading, setData: setSchedules } = useCollection<ClassSchedule>(schedulesQuery);
 
   const handleSave = async (data: Omit<ClassSchedule, 'id'> | Partial<ClassSchedule>) => {
     try {
@@ -156,12 +156,14 @@ export function ClassScheduleManager() {
   };
   
   const handleDelete = async (id: string) => {
-    console.log(`Attempting to delete document with ID: ${id}`);
     if (window.confirm('Are you sure you want to delete this class?')) {
       const docRef = doc(firestore, 'classSchedules', id);
       try {
         await deleteDoc(docRef);
         toast({ title: 'Success', description: 'Class schedule deleted.' });
+        if(schedules && setSchedules) {
+            setSchedules(schedules.filter(s => s.id !== id));
+        }
       } catch (error: any) {
         toast({
           title: 'Deletion Failed',
