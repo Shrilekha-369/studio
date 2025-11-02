@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { useCollection, useFirestore, useMemoFirebase, useStorage } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { GalleryItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -15,11 +15,11 @@ import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Edit, PlusCircle, Trash2, Upload } from 'lucide-react';
 import Image from 'next/image';
-import { updateDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Progress } from '../ui/progress';
 
 
 const GalleryItemForm = ({ item, onSave, closeDialog }: { item?: GalleryItem; onSave: (data: Partial<GalleryItem>, file?: File) => void; closeDialog: () => void }) => {
+  const { toast } = useToast();
   const [formData, setFormData] = useState<Partial<GalleryItem>>({
     title: item?.title || '',
     description: item?.description || '',
@@ -120,44 +120,55 @@ export function GalleryManager() {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
   const galleryItemsRef = useMemoFirebase(() => collection(firestore, 'galleryItems'), [firestore]);
-  const { data: galleryItems, isLoading } = useCollection<GalleryItem>(galleryItemsRef);
+  const { data: galleryItems, isLoading, setData: setGalleryItems } = useCollection<GalleryItem>(galleryItemsRef);
 
   const handleSave = async (data: Partial<GalleryItem>, file?: File) => {
+    if (!firestore || !storage) return;
+
     try {
-      setUploadProgress(0); // Start progress indication
       let imageUrl = data.imageUrl;
 
       if (file) {
+        setUploadProgress(0); // Show progress bar
         const storageRef = ref(storage, `gallery/${Date.now()}_${file.name}`);
-        
-        // Using uploadBytes for simplicity. For large files, uploadBytesResumable is better.
         await uploadBytes(storageRef, file);
         imageUrl = await getDownloadURL(storageRef);
+        setUploadProgress(100);
       }
 
       const dataToSave = { ...data, imageUrl };
       
       if (editingItem) {
         const docRef = doc(firestore, 'galleryItems', editingItem.id);
-        updateDocumentNonBlocking(docRef, dataToSave);
+        await updateDoc(docRef, dataToSave);
         toast({ title: 'Success', description: 'Gallery item updated.' });
       } else {
-        addDocumentNonBlocking(collection(firestore, 'galleryItems'), dataToSave);
+        // We let useCollection handle the update for adds
+        await addDoc(collection(firestore, 'galleryItems'), dataToSave);
         toast({ title: 'Success', description: 'New gallery item added.' });
       }
       closeDialog();
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } finally {
-        setUploadProgress(null);
+        setTimeout(() => setUploadProgress(null), 1000);
     }
   };
   
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    if (!firestore) return;
     if (window.confirm('Are you sure you want to delete this item?')) {
-        const docRef = doc(firestore, 'galleryItems', id);
-        deleteDocumentNonBlocking(docRef);
-        toast({ title: 'Success', description: 'Gallery item deleted.' });
+        try {
+            const docRef = doc(firestore, 'galleryItems', id);
+            await deleteDoc(docRef);
+            toast({ title: 'Success', description: 'Gallery item deleted.' });
+            // Manually update the state to reflect deletion
+            if (galleryItems) {
+                setGalleryItems(galleryItems.filter(item => item.id !== id));
+            }
+        } catch (error: any) {
+            toast({ title: 'Deletion Failed', description: error.message, variant: 'destructive' });
+        }
     }
   };
   
