@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import {
   Query,
   onSnapshot,
+  getDocs,
+  doc,
+  getDoc,
   DocumentData,
   FirestoreError,
   QuerySnapshot,
@@ -71,21 +74,20 @@ export function useCollection<T = any>(
 
     setIsLoading(true);
     setError(null);
+    let isSubscribed = true;
 
-    // Directly use memoizedTargetRefOrQuery as it's assumed to be the final query
-    const unsubscribe = onSnapshot(
-      memoizedTargetRefOrQuery,
-      (snapshot: QuerySnapshot<DocumentData>) => {
-        const results: ResultItemType[] = [];
-        for (const doc of snapshot.docs) {
-          results.push({ ...(doc.data() as T), id: doc.id });
-        }
+    const fetchDataWithIndividualGets = async () => {
+      try {
+        const querySnapshot = await getDocs(memoizedTargetRefOrQuery);
+        if (!isSubscribed) return;
+
+        const results = querySnapshot.docs.map(doc => ({ ...(doc.data() as T), id: doc.id }));
+        
         setData(results);
         setError(null);
-        setIsLoading(false);
-      },
-      (error: FirestoreError) => {
-        // This logic extracts the path from either a ref or a query
+      } catch (e: any) {
+        if (!isSubscribed) return;
+        
         const path: string =
           memoizedTargetRefOrQuery.type === 'collection'
             ? (memoizedTargetRefOrQuery as CollectionReference).path
@@ -94,21 +96,43 @@ export function useCollection<T = any>(
         const contextualError = new FirestorePermissionError({
           operation: 'list',
           path,
-        })
+        });
 
-        setError(contextualError)
-        setData(null)
-        setIsLoading(false)
-
-        // trigger global error propagation
+        setError(contextualError);
         errorEmitter.emit('permission-error', contextualError);
+      } finally {
+        if (isSubscribed) {
+          setIsLoading(false);
+        }
       }
+    };
+
+    fetchDataWithIndividualGets();
+
+    // Set up a listener to re-fetch if data changes. This still might fail
+    // if list permissions are the issue, but it's the best we can do for "real-time"
+    // feel without proper permissions.
+    const unsubscribe = onSnapshot(
+        memoizedTargetRefOrQuery,
+        (snapshot) => {
+            // Re-fetch using the getDocs strategy upon detecting a change.
+            fetchDataWithIndividualGets();
+        },
+        (error: FirestoreError) => {
+            fetchDataWithIndividualGets(); // Attempt fetching even if listener fails
+        }
     );
 
-    return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery]); // Re-run if the target query/reference changes.
+
+    return () => {
+      isSubscribed = false;
+      unsubscribe();
+    };
+  }, [memoizedTargetRefOrQuery]);
+
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
     throw new Error(memoizedTargetRefOrQuery + ' was not properly memoized using useMemoFirebase');
   }
+
   return { data, isLoading, error };
 }
