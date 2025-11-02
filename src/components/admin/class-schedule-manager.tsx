@@ -1,9 +1,9 @@
 
 'use client';
 
-import { useState } from 'react';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, query, orderBy, deleteDoc } from 'firebase/firestore';
+import { useState, useEffect } from 'react';
+import { useFirestore } from '@/firebase';
+import { collection, doc, query, orderBy, getDocs, deleteDoc } from 'firebase/firestore';
 import type { ClassSchedule } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PlusCircle, Edit, Trash2, CalendarIcon } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, CalendarIcon, RefreshCw } from 'lucide-react';
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -135,9 +135,26 @@ export function ClassScheduleManager() {
   const { toast } = useToast();
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<ClassSchedule | undefined>(undefined);
+  const [schedules, setSchedules] = useState<ClassSchedule[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchSchedules = async () => {
+    setIsLoading(true);
+    try {
+      const q = query(collection(firestore, 'classSchedules'), orderBy('classDate', 'desc'));
+      const querySnapshot = await getDocs(q);
+      const fetchedSchedules = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ClassSchedule));
+      setSchedules(fetchedSchedules);
+    } catch (error: any) {
+      toast({ title: 'Error fetching schedules', description: error.message, variant: 'destructive' });
+    }
+    setIsLoading(false);
+  };
   
-  const schedulesQuery = useMemoFirebase(() => query(collection(firestore, 'classSchedules'), orderBy('classDate', 'desc')), [firestore]);
-  const { data: schedules, isLoading, setData: setSchedules } = useCollection<ClassSchedule>(schedulesQuery);
+  useEffect(() => {
+    fetchSchedules();
+  }, [firestore]);
+
 
   const handleSave = async (data: Omit<ClassSchedule, 'id'> | Partial<ClassSchedule>) => {
     try {
@@ -150,6 +167,7 @@ export function ClassScheduleManager() {
         toast({ title: 'Success', description: 'New class added.' });
       }
       closeDialog();
+      fetchSchedules(); // Refetch after saving
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     }
@@ -160,14 +178,9 @@ export function ClassScheduleManager() {
       try {
         const docRef = doc(firestore, 'classSchedules', id);
         await deleteDoc(docRef);
-        
         toast({ title: 'Success', description: 'Class schedule deleted.' });
-
         // Manually update the local state to reflect the deletion
-        if (setSchedules) {
-          setSchedules(prevSchedules => (prevSchedules || []).filter(s => s.id !== id));
-        }
-
+        setSchedules(prevSchedules => prevSchedules.filter(s => s.id !== id));
       } catch (error: any) {
         toast({
           title: 'Deletion Failed',
@@ -193,47 +206,55 @@ export function ClassScheduleManager() {
     <div className="border rounded-lg shadow-lg overflow-hidden bg-card p-4">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold font-headline">Manage Classes</h2>
-        <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => openDialog()}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Class
+        <div className="flex items-center gap-2">
+            <Button onClick={fetchSchedules} variant="outline" size="sm" disabled={isLoading}>
+                <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                Refresh
             </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <ClassScheduleForm schedule={editingSchedule} onSave={handleSave} closeDialog={closeDialog} />
-          </DialogContent>
-        </Dialog>
+            <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+                <Button onClick={() => openDialog()}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Class
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <ClassScheduleForm schedule={editingSchedule} onSave={handleSave} closeDialog={closeDialog} />
+            </DialogContent>
+            </Dialog>
+        </div>
       </div>
 
       {isLoading && <p>Loading schedules...</p>}
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Class Name</TableHead>
-            <TableHead>Instructor</TableHead>
-            <TableHead>Time</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {schedules?.map((schedule) => (
-            <TableRow key={schedule.id}>
-              <TableCell>{schedule.className}</TableCell>
-              <TableCell>{schedule.instructor}</TableCell>
-              <TableCell>{format(new Date(schedule.classDate), 'PPP')} at {schedule.startTime}</TableCell>
-              <TableCell className="space-x-2">
-                <Button variant="ghost" size="icon" onClick={() => openDialog(schedule)}>
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="icon" onClick={() => handleDelete(schedule.id)}>
-                    <Trash2 className="h-4 w-4 text-destructive"/>
-                </Button>
-              </TableCell>
+      {!isLoading && (
+        <Table>
+            <TableHeader>
+            <TableRow>
+                <TableHead>Class Name</TableHead>
+                <TableHead>Instructor</TableHead>
+                <TableHead>Time</TableHead>
+                <TableHead>Actions</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+            </TableHeader>
+            <TableBody>
+            {schedules?.map((schedule) => (
+                <TableRow key={schedule.id}>
+                <TableCell>{schedule.className}</TableCell>
+                <TableCell>{schedule.instructor}</TableCell>
+                <TableCell>{format(new Date(schedule.classDate), 'PPP')} at {schedule.startTime}</TableCell>
+                <TableCell className="space-x-2">
+                    <Button variant="ghost" size="icon" onClick={() => openDialog(schedule)}>
+                    <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(schedule.id)}>
+                        <Trash2 className="h-4 w-4 text-destructive"/>
+                    </Button>
+                </TableCell>
+                </TableRow>
+            ))}
+            </TableBody>
+        </Table>
+      )}
     </div>
   );
 }
