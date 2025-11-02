@@ -1,3 +1,4 @@
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -101,7 +102,7 @@ export default function Home() {
                 </div>
             </div>
             <div className="relative w-full aspect-video rounded-lg overflow-hidden shadow-xl">
-                 {classImages.yoga && <Image src={classImages.yoga.imageUrl} alt="About Us Image" fill className="object-cover" data-ai-hint={classImages.yoga.imageHint} />}
+                 {classImages.yoga && <Image src={classImages.yoga.imageUrl} alt="About Us Image" fill className="object-cover" data-ai-hint={classImages.yoga.imageHint} sizes="(max-width: 768px) 100vw, 50vw" />}
             </div>
           </div>
         </div>
@@ -120,7 +121,7 @@ export default function Home() {
               <Card key={item.title} className="overflow-hidden transform transition-transform duration-300 hover:scale-105 hover:shadow-xl">
                 {item.image && (
                     <div className="relative h-48 w-full">
-                        <Image src={item.image.imageUrl} alt={item.title} fill className="object-cover" data-ai-hint={item.image.imageHint}/>
+                        <Image src={item.image.imageUrl} alt={item.title} fill className="object-cover" data-ai-hint={item.image.imageHint} sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"/>
                     </div>
                 )}
                 <CardHeader>
