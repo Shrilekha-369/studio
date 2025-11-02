@@ -8,7 +8,7 @@ export default function ContactPage() {
     {
       icon: MapPin,
       title: "Our Address",
-      value: "315, 2, Kaggadasapura Main Rd, above Union Bank of India, Varsova Layout, Kaggadasapura, Bengaluru, Karnataka 560093",
+      value: "Kaggadasapura Main Rd, above Union Bank of India, Nagavarapalya, Kaggadasapura, Bengaluru, Karnataka 560093",
       href: "https://www.google.com/maps/search/?api=1&query=12.9839,77.6693",
     },
     {
