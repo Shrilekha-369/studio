@@ -33,7 +33,12 @@ service cloud.firestore {
      * This rule allows any user (signed in or not) to read data from classSchedules and galleryItems.
      * Write access is restricted to admins.
      */
-    match /{collectionName}/{docId} where collectionName in ['classSchedules', 'galleryItems'] {
+    match /classSchedules/{classScheduleId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /galleryItems/{galleryItemId} {
       allow read: if true;
       allow create, update, delete: if isAdmin();
     }
@@ -72,7 +77,7 @@ service cloud.firestore {
      * This rule is essential for the admin dashboard to fetch all pending bookings.
      */
     match /{path=**}/bookings/{bookingId} {
-        allow read, write: if isAdmin();
+        allow read: if isAdmin();
     }
 
     /**
