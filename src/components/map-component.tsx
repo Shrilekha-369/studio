@@ -3,7 +3,7 @@
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // Fix for default icon path issue with webpack
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -16,30 +16,27 @@ L.Icon.Default.mergeOptions({
 
 
 export function MapComponent() {
-  const mapRef = useRef<HTMLDivElement>(null);
   const position: [number, number] = [18.4875, -67.1279]; // ONE Fitness Studio Aguadilla
+  const [map, setMap] = useState<L.Map | null>(null);
+  const mapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // This is a workaround for a bug in react-leaflet in React 18 strict mode
-    // that causes the map to be initialized twice.
-    if (mapRef.current && (mapRef.current as any)._leaflet_id) {
-      return;
+    if (mapRef.current && !map) {
+      const mapInstance = L.map(mapRef.current).setView(position, 15);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(mapInstance);
+
+      L.marker(position).addTo(mapInstance)
+        .bindPopup('One Fitness Studio <br /> Aguadilla, PR')
+        .openPopup();
+      
+      setMap(mapInstance);
     }
-  }, []);
+  }, [map, position]);
 
   return (
-      <MapContainer whenReady={() => {
-          if (mapRef.current) (mapRef.current as any)._leaflet_id = true;
-      }} center={position} zoom={15} scrollWheelZoom={false} className="h-full w-full rounded-lg">
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <Marker position={position}>
-          <Popup>
-            One Fitness Studio <br /> Aguadilla, PR
-          </Popup>
-        </Marker>
-      </MapContainer>
+    <div ref={mapRef} style={{ height: '100%', width: '100%' }} className="rounded-lg" />
   );
 }
