@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import type { GalleryItem } from '@/lib/types';
@@ -74,6 +74,7 @@ export function ImageModal({ image, isOpen, onClose }: ImageModalProps) {
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
         >
+        <DialogTitle className="sr-only">{image?.title || 'Full-size gallery image'}</DialogTitle>
         <div 
             className="flex-grow relative overflow-hidden cursor-grab"
             onMouseDown={handleMouseDown}
