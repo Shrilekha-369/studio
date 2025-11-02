@@ -33,6 +33,12 @@ const nextConfig: NextConfig = {
         hostname: '*.googleusercontent.com',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'content.jdmagicbox.com',
+        port: '',
+        pathname: '/**',
       }
     ],
   },
