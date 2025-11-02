@@ -3,15 +3,13 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth, initiateGoogleSignIn } from '@/firebase';
+import { useAuth, initiateEmailSignIn, initiateGoogleSignIn } from '@/firebase';
 import { useUser } from '@/firebase/provider';
-import { signInWithEmailAndPassword } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Separator } from '@/components/ui/separator';
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24px" height="24px" {...props}>
@@ -41,44 +39,37 @@ export default function LoginPage() {
     }
   }, [isUserLoading, user, claims, router]);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      toast({
-        title: 'Login Successful',
-        description: 'Welcome back!',
+    initiateEmailSignIn(auth, email, password)
+      .catch((error: any) => {
+        toast({
+          title: 'Login Failed',
+          description: error.message,
+          variant: 'destructive',
+        });
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
-      // The redirect logic in the effect will handle the rest
-    } catch (error: any) {
-      toast({
-        title: 'Login Failed',
-        description: error.message,
-        variant: 'destructive',
-      });
-      setIsLoading(false);
-    }
   };
-  
-  const handleGoogleSignIn = async () => {
+
+  const handleGoogleSignIn = () => {
     setIsLoading(true);
-    try {
-      await initiateGoogleSignIn(auth);
-      // The onAuthStateChanged listener will handle profile creation and redirection
-    } catch (error: any) {
-      // Don't show a toast for popup closed by user
-      if (error.code === 'auth/popup-closed-by-user') {
-          setIsLoading(false);
-          return;
-      }
-      toast({
-        title: 'Google Sign-In Failed',
-        description: error.message,
-        variant: 'destructive',
+    initiateGoogleSignIn(auth)
+      .catch((error: any) => {
+        if (error.code !== 'auth/popup-closed-by-user') {
+          toast({
+            title: 'Google Sign-In Failed',
+            description: error.message,
+            variant: 'destructive',
+          });
+        }
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
-      setIsLoading(false);
-    }
   };
 
   if (isUserLoading || (user && !user.isAnonymous)) {

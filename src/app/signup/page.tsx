@@ -3,15 +3,15 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth, useFirestore, setDocumentNonBlocking, initiateGoogleSignIn } from '@/firebase';
+import { useAuth, useFirestore, setDocumentNonBlocking, initiateGoogleSignIn, initiateEmailSignUp } from '@/firebase';
 import { useUser } from '@/firebase/provider';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { updateProfile } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -39,21 +39,30 @@ export default function SignUpPage() {
   useEffect(() => {
     if (!isUserLoading && user && !user.isAnonymous) {
       const userDocRef = doc(firestore, 'users', user.uid);
-      getDoc(userDocRef).then(docSnap => {
-        if (!docSnap.exists()) {
-          // This logic will now primarily handle users signing up with Google for the first time
-          const nameParts = user.displayName?.split(' ') || [];
-          const profile: UserProfile = {
-            id: user.uid,
-            firstName: nameParts[0] || '',
-            lastName: nameParts.slice(1).join(' ') || '',
-            email: user.email!,
-          };
-          setDocumentNonBlocking(userDocRef, profile, { merge: false });
+      
+      const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          // Profile exists, we can redirect.
+          router.push('/my-profile');
+          unsubscribe(); // Stop listening once we have what we need.
+        } else {
+          // This logic now primarily handles first-time Google sign-ins.
+          // For email sign-up, the profile is created in handleEmailSignUp.
+          if (user.providerData.some(p => p.providerId === 'google.com')) {
+              const nameParts = user.displayName?.split(' ') || [];
+              const profile: UserProfile = {
+                id: user.uid,
+                firstName: nameParts[0] || '',
+                lastName: nameParts.slice(1).join(' ') || '',
+                email: user.email!,
+              };
+              setDocumentNonBlocking(userDocRef, profile, { merge: false });
+              // The redirect will happen on the next snapshot update.
+          }
         }
-        // Redirect after checking/creating profile
-        router.push('/my-profile');
       });
+      
+      return () => unsubscribe();
     }
   }, [user, isUserLoading, firestore, router]);
 
@@ -66,7 +75,7 @@ export default function SignUpPage() {
     );
   }
 
-  const handleEmailSignUp = async (e: React.FormEvent) => {
+  const handleEmailSignUp = (e: React.FormEvent) => {
     e.preventDefault();
     if (password.length < 6) {
       toast({
@@ -77,59 +86,48 @@ export default function SignUpPage() {
       return;
     }
     setIsLoading(true);
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const firebaseUser = userCredential.user;
 
-      await updateProfile(firebaseUser, {
-        displayName: `${firstName} ${lastName}`.trim(),
+    initiateEmailSignUp(auth, email, password)
+      .then((userCredential) => {
+          const firebaseUser = userCredential.user;
+          updateProfile(firebaseUser, {
+              displayName: `${firstName} ${lastName}`.trim(),
+          });
+          const userProfile: UserProfile = {
+              id: firebaseUser.uid,
+              firstName,
+              lastName,
+              email: firebaseUser.email!,
+          };
+          const userDocRef = doc(firestore, 'users', firebaseUser.uid);
+          setDocumentNonBlocking(userDocRef, userProfile, { merge: false });
+      })
+      .catch((error: any) => {
+        toast({
+          title: 'Sign Up Failed',
+          description: error.message,
+          variant: 'destructive',
+        });
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
-      
-      const userProfile: UserProfile = {
-        id: firebaseUser.uid,
-        firstName,
-        lastName,
-        email: firebaseUser.email!,
-      };
-
-      const userDocRef = doc(firestore, 'users', firebaseUser.uid);
-      // We explicitly set the document here for email sign-up
-      setDocumentNonBlocking(userDocRef, userProfile, { merge: false });
-
-      toast({
-        title: 'Account Created!',
-        description: "Welcome! You've been signed up successfully.",
-      });
-
-      // The useEffect will handle the redirect after the user state is updated.
-    } catch (error: any) {
-      toast({
-        title: 'Sign Up Failed',
-        description: error.message,
-        variant: 'destructive',
-      });
-      setIsLoading(false);
-    }
   };
-  
-  const handleGoogleSignUp = async () => {
+
+  const handleGoogleSignUp = () => {
     setIsLoading(true);
-    try {
-      await initiateGoogleSignIn(auth);
-      // The onAuthStateChanged listener and useEffect will handle profile creation and redirection
-    } catch (error: any) {
-      // Don't show a toast for popup closed by user
-      if (error.code === 'auth/popup-closed-by-user') {
+    initiateGoogleSignIn(auth)
+      .catch((error: any) => {
+        if (error.code !== 'auth/popup-closed-by-user') {
+            toast({
+              title: 'Google Sign-In Failed',
+              description: error.message,
+              variant: 'destructive',
+            });
+        }
+      }).finally(() => {
           setIsLoading(false);
-          return;
-      }
-      toast({
-        title: 'Google Sign-In Failed',
-        description: error.message,
-        variant: 'destructive',
       });
-      setIsLoading(false);
-    }
   };
 
 
