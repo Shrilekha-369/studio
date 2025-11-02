@@ -1,12 +1,6 @@
 import { Mail, MapPin, Phone } from "lucide-react";
-import { MapComponent } from "@/components/map-component";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import dynamic from "next/dynamic";
-
-const DynamicMap = dynamic(() => import('@/components/map-component').then(mod => mod.MapComponent), {
-  ssr: false,
-  loading: () => <div className="h-full w-full bg-muted flex items-center justify-center rounded-lg"><p>Loading map...</p></div>
-});
+import DynamicMap from "@/components/dynamic-map";
 
 
 export default function ContactPage() {
