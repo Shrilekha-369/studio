@@ -70,10 +70,9 @@ service cloud.firestore {
     /**
      * @description This allows admins to perform a collection group query on 'bookings'.
      * This rule is essential for the admin dashboard to fetch all pending bookings.
-     * Crucially, it only grants read and write, not 'list', to avoid interfering with public list access.
      */
     match /{path=**}/bookings/{bookingId} {
-      allow read, write: if isAdmin();
+        allow read, write: if isAdmin();
     }
 
     /**
@@ -90,7 +89,7 @@ service cloud.firestore {
      * @return {bool} True if the user is the owner, false otherwise.
      */
     function isOwner(userId) {
-      return request.auth.uid == userId;
+      return request.auth != null && request.auth.uid == userId;
     }
 
     /**
@@ -107,7 +106,7 @@ service cloud.firestore {
      * @return {bool} True if the user is an admin, false otherwise.
      */
     function isAdmin() {
-      return isSignedIn() && request.auth.token.admin == true;
+      return request.auth != null && request.auth.token.admin == true;
     }
   }
 }
