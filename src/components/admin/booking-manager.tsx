@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useFirestore } from '@/firebase';
-import { collectionGroup, query, where, getDocs, doc, DocumentSnapshot, getDoc, DocumentData } from 'firebase/firestore';
+import { collectionGroup, query, where, getDocs, doc, DocumentSnapshot, getDoc, DocumentData, DocumentReference } from 'firebase/firestore';
 import type { Booking, UserProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -32,11 +32,20 @@ export function BookingManager() {
       const userCache = new Map<string, UserProfile>();
 
       for (const bookingDoc of querySnapshot.docs) {
-        const booking = { id: bookingDoc.id, ...bookingDoc.data() } as Booking;
+        // The booking document's path is /users/{userId}/bookings/{bookingId}
+        // We need to get the parent's parent to get the userId
+        const userId = bookingDoc.ref.parent.parent?.id;
+
+        if (!userId) {
+          console.warn('Could not determine userId for booking:', bookingDoc.id);
+          continue; 
+        }
+
+        const booking = { id: bookingDoc.id, userId, ...bookingDoc.data() } as Booking;
         let userProfile: UserProfile | undefined = userCache.get(booking.userId);
 
         if (!userProfile) {
-            const userDocRef = doc(firestore, 'users', booking.userId);
+            const userDocRef: DocumentReference<DocumentData> = doc(firestore, 'users', booking.userId);
             const userDocSnap: DocumentSnapshot<DocumentData> = await getDoc(userDocRef);
             
             if (userDocSnap.exists()) {
@@ -64,7 +73,7 @@ export function BookingManager() {
   }, [firestore]);
 
   const handleUpdateStatus = (booking: Booking, newStatus: 'approved' | 'rejected') => {
-    if (!firestore) return;
+    if (!firestore || !booking.userId) return;
     const bookingDocRef = doc(firestore, 'users', booking.userId, 'bookings', booking.id);
     updateDocumentNonBlocking(bookingDocRef, { status: newStatus });
     
