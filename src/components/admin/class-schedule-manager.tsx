@@ -181,20 +181,18 @@ export function ClassScheduleManager() {
   
   const handleDelete = async (id: string) => {
     if (!firestore) return;
-    if (window.confirm('Are you sure you want to delete this class?')) {
-      try {
-        const docRef = doc(firestore, 'classSchedules', id);
-        await deleteDoc(docRef);
-        toast({ title: 'Success', description: 'Class schedule deleted.' });
-        setSchedules(prevSchedules => prevSchedules.filter(s => s.id !== id));
-      } catch (error: any) {
-        toast({
-          title: 'Deletion Failed',
-          description: error.message || 'Could not delete class schedule.',
-          variant: 'destructive',
-        });
-        console.error('Error deleting document: ', error);
-      }
+    try {
+      const docRef = doc(firestore, 'classSchedules', id);
+      await deleteDoc(docRef);
+      toast({ title: 'Success', description: 'Class schedule deleted.' });
+      setSchedules(prevSchedules => prevSchedules.filter(s => s.id !== id));
+    } catch (error: any) {
+      toast({
+        title: 'Deletion Failed',
+        description: error.message || 'Could not delete class schedule.',
+        variant: 'destructive',
+      });
+      console.error('Error deleting document: ', error);
     }
   };
 

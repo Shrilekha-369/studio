@@ -64,6 +64,7 @@ export default function Home() {
             className="object-cover"
             priority
             data-ai-hint={heroImage.imageHint}
+            sizes="100vw"
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
