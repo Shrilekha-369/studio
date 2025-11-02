@@ -52,7 +52,7 @@ export function Header() {
       <div className="container flex h-14 max-w-screen-2xl items-center justify-between">
         <Link href="/" className="flex items-center gap-2" onClick={() => setIsOpen(false)}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/Logo.jpg" alt="One Fitness Logo" width={32} height={32} />
+          <img src="/Logo.jpg" alt="One Fitness Logo" width={32} height={32} className="flex-shrink-0" />
           <span className="font-headline font-bold text-lg whitespace-nowrap">One Fitness</span>
         </Link>
 
