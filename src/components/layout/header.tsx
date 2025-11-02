@@ -1,6 +1,8 @@
+
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Dumbbell, Menu, LogOut, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
@@ -50,7 +52,7 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 max-w-screen-2xl items-center justify-between">
         <Link href="/" className="flex items-center gap-2" onClick={() => setIsOpen(false)}>
-          <Dumbbell className="h-6 w-6 text-primary" />
+          <Image src="/logo.png" alt="One Fitness Logo" width={32} height={32} />
           <span className="font-headline font-bold text-lg">One Fitness</span>
         </Link>
 
@@ -125,7 +127,7 @@ export function Header() {
             <SheetContent side="right" className="w-[300px] bg-background">
               <div className="p-4">
                 <Link href="/" className="flex items-center gap-2 mb-8" onClick={() => setIsOpen(false)}>
-                  <Dumbbell className="h-6 w-6 text-primary" />
+                  <Image src="/logo.png" alt="One Fitness Logo" width={32} height={32} />
                   <span className="font-headline font-bold text-lg">One Fitness</span>
                 </Link>
                 <nav className="flex flex-col gap-4">
