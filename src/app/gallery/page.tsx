@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 const ImageCard = ({ image }: { image: GalleryItem }) => (
   <Card className="overflow-hidden group">
     <CardContent className="p-0">
-      <div className="relative aspect-w-4 aspect-h-3">
+      <div className="relative w-full" style={{ paddingBottom: '75%' /* 4:3 aspect ratio */ }}>
         <Image
           src={image.imageUrl}
           alt={image.description || image.title || 'Gallery image'}
@@ -30,8 +30,8 @@ const GalleryGrid = ({ images, isLoading }: { images: GalleryItem[] | null; isLo
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="aspect-w-4 aspect-h-3">
-             <Skeleton className="w-full h-full" />
+          <div key={i} className="relative w-full" style={{ paddingBottom: '75%' }}>
+             <Skeleton className="absolute top-0 left-0 w-full h-full" />
           </div>
         ))}
       </div>
