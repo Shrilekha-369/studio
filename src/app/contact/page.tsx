@@ -1,7 +1,5 @@
 import { Mail, MapPin, Phone } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import DynamicMap from "@/components/dynamic-map";
-
 
 export default function ContactPage() {
   const contactDetails = [
@@ -9,7 +7,7 @@ export default function ContactPage() {
       icon: MapPin,
       title: "Our Address",
       value: "Kaggadasapura Main Rd, above Union Bank of India, Nagavarapalya, Kaggadasapura, Bengaluru, Karnataka 560093",
-      href: "https://www.google.com/maps/search/?api=1&query=12.9839,77.6693",
+      href: "https://www.google.com/maps/place/One+Fitness+Studio/@12.985074,77.673441,17z/data=!3m1!4b1!4m6!3m5!1s0x3bae11af6c4fcc29:0xc4727cddd5407567!8m2!3d12.985074!4d77.6734407!16s%2Fg%2F11f_6z0y1l?entry=ttu",
     },
     {
       icon: Phone,
@@ -56,8 +54,16 @@ export default function ContactPage() {
           ))}
         </div>
         
-        <div className="h-[400px] lg:h-full w-full rounded-lg overflow-hidden shadow-lg">
-          <DynamicMap />
+        <div className="h-[450px] lg:h-full w-full rounded-lg overflow-hidden shadow-lg">
+          <iframe 
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3887.793212820604!2d77.67344066609483!3d12.985073995684935!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bae11af6c4fcc29%3A0xc4727cddd5407567!2sOne%20Fitness%20Studio!5e0!3m2!1sen!2sin!4v1762072846866!5m2!1sen!2sin" 
+            width="100%" 
+            height="100%" 
+            style={{ border: 0 }} 
+            allowFullScreen={true}
+            loading="lazy" 
+            referrerPolicy="no-referrer-when-downgrade"
+          ></iframe>
         </div>
       </div>
     </div>
