@@ -181,13 +181,11 @@ export function ClassScheduleManager() {
   
   const handleDelete = async (id: string) => {
     if (!firestore) return;
-    console.log(`Attempting to delete document with ID: ${id}`);
     if (window.confirm('Are you sure you want to delete this class?')) {
       try {
-        const docRef = doc(firestore, 'classSchedules', id);
-        await deleteDoc(docRef);
+        await deleteDoc(doc(firestore, 'classSchedules', id));
         toast({ title: 'Success', description: 'Class schedule deleted.' });
-        setSchedules((prevSchedules) => prevSchedules.filter((s) => s.id !== id));
+        setSchedules(prevSchedules => prevSchedules.filter(s => s.id !== id));
       } catch (error: any) {
         toast({
           title: 'Deletion Failed',
