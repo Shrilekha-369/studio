@@ -1,3 +1,76 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero-bg",
+      "description": "A modern gym with people working out.",
+      "imageUrl": "https://images.unsplash.com/photo-1604480133080-602261a680df?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxneW0lMjB3b3Jrb3V0fGVufDB8fHx8MTc2MjAyNDE0N3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "gym workout"
+    },
+    {
+      "id": "gallery-venue-1",
+      "description": "Spacious main workout area of the gym.",
+      "imageUrl": "https://images.unsplash.com/photo-1693214674451-2111f7690877?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxneW0lMjBpbnRlcmlvcnxlbnwwfHx8fDE3NjIwMTkwMTl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "gym interior"
+    },
+    {
+      "id": "gallery-venue-2",
+      "description": "Yoga and aerobics studio with mats.",
+      "imageUrl": "https://images.unsplash.com/photo-1651077837628-52b3247550ae?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHx5b2dhJTIwc3R1ZGlvfGVufDB8fHx8MTc2MjA2Mzg0MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "yoga studio"
+    },
+    {
+      "id": "gallery-venue-3",
+      "description": "Row of treadmills.",
+      "imageUrl": "https://images.unsplash.com/photo-1590487988256-9ed24133863e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxneW0lMjBlcXVpcG1lbnR8ZW58MHx8fHwxNzYyMDE5MDE5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "gym equipment"
+    },
+    {
+      "id": "gallery-venue-4",
+      "description": "Weightlifting area with racks and barbells.",
+      "imageUrl": "https://images.unsplash.com/photo-1668561791232-9546c76fe8b5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8d2VpZ2h0bGlmdGluZyUyMGFyZWF8ZW58MHx8fHwxNzYyMDYzODQwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "weightlifting area"
+    },
+    {
+      "id": "gallery-competition-1",
+      "description": "Winner holding a trophy.",
+      "imageUrl": "https://images.unsplash.com/photo-1724927080035-bb6e95449984?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8dHJvcGh5JTIwYXdhcmR8ZW58MHx8fHwxNzYyMDI3NTI0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "trophy award"
+    },
+    {
+      "id": "gallery-competition-2",
+      "description": "Team photo after a competition.",
+      "imageUrl": "https://images.unsplash.com/photo-1614954538315-542284a3ac2d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxmaXRuZXNzJTIwdGVhbXxlbnwwfHx8fDE3NjIwNjM4NDB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "fitness team"
+    },
+    {
+      "id": "gallery-competition-3",
+      "description": "Athlete performing a deadlift at a competition.",
+      "imageUrl": "https://images.unsplash.com/photo-1607962252615-230f134370bd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxwb3dlcmxpZnRpbmclMjBjb21wZXRpdGlvbnxlbnwwfHx8fDE3NjIwNjM4NDB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "powerlifting competition"
+    },
+    {
+      "id": "gallery-competition-4",
+      "description": "Crossfit competition in progress.",
+      "imageUrl": "https://images.unsplash.com/photo-1603233720024-4ee0592a58f9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxjcm9zc2ZpdCUyMGNvbXBldGl0aW9ufGVufDB8fHx8MTc2MjA2Mzg0MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "crossfit competition"
+    },
+    {
+      "id": "class-yoga",
+      "description": "A group of people in a yoga class.",
+      "imageUrl": "https://images.unsplash.com/photo-1552196563-55cd4e45efb3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHx5b2dhJTIwY2xhc3N8ZW58MHx8fHwxNzYyMDYzODQwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "yoga class"
+    },
+    {
+      "id": "class-hiit",
+      "description": "High-intensity interval training class.",
+      "imageUrl": "https://images.unsplash.com/photo-1548395082-82508770c46e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8SElJVCUyMGNsYXNzfGVufDB8fHx8MTc2MjA2Mzg0MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "HIIT class"
+    },
+    {
+      "id": "class-spin",
+      "description": "Spin class with many bikes.",
+      "imageUrl": "https://images.unsplash.com/photo-1590556409324-aa1d726e5c3c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxzcGluJTIwY2xhc3N8ZW58MHx8fHwxNzYyMDE5MDE5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "spin class"
+    }
+  ]
 }
