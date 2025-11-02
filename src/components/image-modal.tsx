@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { GalleryItem } from '@/lib/types';
 import { Skeleton } from './ui/skeleton';
 
@@ -12,23 +12,42 @@ interface ImageModalProps {
   image: GalleryItem | null;
   isOpen: boolean;
   onClose: () => void;
+  onNavigate: (direction: 'next' | 'prev') => void;
+  hasNext: boolean;
+  hasPrev: boolean;
 }
 
-export function ImageModal({ image, isOpen, onClose }: ImageModalProps) {
+export function ImageModal({ image, isOpen, onClose, onNavigate, hasNext, hasPrev }: ImageModalProps) {
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const [imageLoaded, setImageLoaded] = useState(false);
 
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'ArrowRight' && hasNext) {
+      onNavigate('next');
+    } else if (e.key === 'ArrowLeft' && hasPrev) {
+      onNavigate('prev');
+    } else if (e.key === 'Escape') {
+      onClose();
+    }
+  }, [hasNext, hasPrev, onNavigate, onClose]);
+
   useEffect(() => {
-    // Reset state when a new image is opened
     if (isOpen) {
       setScale(1);
       setPosition({ x: 0, y: 0 });
       setImageLoaded(false);
+      window.addEventListener('keydown', handleKeyDown);
+    } else {
+      window.removeEventListener('keydown', handleKeyDown);
     }
-  }, [isOpen, image]);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isOpen, image, handleKeyDown]);
 
   const handleZoomIn = () => setScale((s) => Math.min(s + 0.2, 3));
   const handleZoomOut = () => setScale((s) => Math.max(s - 0.2, 0.5));
@@ -69,7 +88,7 @@ export function ImageModal({ image, isOpen, onClose }: ImageModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent 
-        className="max-w-4xl w-full h-[90vh] bg-background p-0 flex flex-col"
+        className="max-w-4xl w-full h-[90vh] bg-background/80 backdrop-blur-sm p-0 flex flex-col border-none"
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
@@ -98,6 +117,29 @@ export function ImageModal({ image, isOpen, onClose }: ImageModalProps) {
             </>
           )}
         </div>
+        
+        {hasPrev && (
+            <Button 
+                variant="ghost" 
+                size="icon" 
+                className="absolute left-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-background/50 hover:bg-background/80"
+                onClick={() => onNavigate('prev')}
+            >
+                <ChevronLeft className="h-8 w-8"/>
+            </Button>
+        )}
+        {hasNext && (
+            <Button 
+                variant="ghost" 
+                size="icon" 
+                className="absolute right-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-background/50 hover:bg-background/80"
+                onClick={() => onNavigate('next')}
+            >
+                <ChevronRight className="h-8 w-8"/>
+            </Button>
+        )}
+
+
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-background/80 p-2 rounded-lg backdrop-blur-sm">
           <Button variant="outline" size="icon" onClick={handleZoomOut}>
             <ZoomOut />

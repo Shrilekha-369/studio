@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Image from 'next/image';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
@@ -57,10 +57,13 @@ export default function GalleryPage() {
   const galleryItemsRef = useMemoFirebase(() => collection(firestore, 'galleryItems'), [firestore]);
   const { data: galleryItems, isLoading } = useCollection<GalleryItem>(galleryItemsRef);
 
+  const [activeTab, setActiveTab] = useState('venue');
   const [selectedImage, setSelectedImage] = useState<GalleryItem | null>(null);
 
-  const venueImages = useMemoFirebase(() => galleryItems?.filter(item => item.itemType === 'venue') || null, [galleryItems]);
-  const competitionImages = useMemoFirebase(() => galleryItems?.filter(item => item.itemType === 'competition') || null, [galleryItems]);
+  const venueImages = useMemo(() => galleryItems?.filter(item => item.itemType === 'venue') || null, [galleryItems]);
+  const competitionImages = useMemo(() => galleryItems?.filter(item => item.itemType === 'competition') || null, [galleryItems]);
+  
+  const currentImageList = activeTab === 'venue' ? venueImages : competitionImages;
 
   const handleImageClick = (image: GalleryItem) => {
     setSelectedImage(image);
@@ -68,6 +71,21 @@ export default function GalleryPage() {
 
   const handleCloseModal = () => {
     setSelectedImage(null);
+  };
+  
+  const handleNavigate = (direction: 'next' | 'prev') => {
+    if (!selectedImage || !currentImageList) return;
+    
+    const currentIndex = currentImageList.findIndex(img => img.id === selectedImage.id);
+    if (currentIndex === -1) return;
+
+    let nextIndex;
+    if (direction === 'next') {
+      nextIndex = (currentIndex + 1) % currentImageList.length;
+    } else {
+      nextIndex = (currentIndex - 1 + currentImageList.length) % currentImageList.length;
+    }
+    setSelectedImage(currentImageList[nextIndex]);
   };
 
   return (
@@ -77,7 +95,7 @@ export default function GalleryPage() {
         <p className="mt-4 text-lg text-foreground/80">A glimpse into our world. See our state-of-the-art facility and celebrate our members' achievements.</p>
       </div>
 
-      <Tabs defaultValue="venue" className="w-full">
+      <Tabs defaultValue="venue" className="w-full" onValueChange={setActiveTab}>
         <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
           <TabsTrigger value="venue" className="font-headline">The Venue</TabsTrigger>
           <TabsTrigger value="competition" className="font-headline">Competition Wins</TabsTrigger>
@@ -94,6 +112,9 @@ export default function GalleryPage() {
         isOpen={!!selectedImage}
         onClose={handleCloseModal}
         image={selectedImage}
+        onNavigate={handleNavigate}
+        hasNext={!!currentImageList && currentImageList.length > 1}
+        hasPrev={!!currentImageList && currentImageList.length > 1}
       />
     </div>
   );
