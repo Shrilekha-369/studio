@@ -12,12 +12,13 @@ import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { setDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const ClassScheduleForm = ({ schedule, onSave, closeDialog }: { schedule?: ClassSchedule; onSave: (data: Omit<ClassSchedule, 'id'>) => void; closeDialog: () => void }) => {
   const [formData, setFormData] = useState<Omit<ClassSchedule, 'id'>>({
     className: schedule?.className || '',
     instructor: schedule?.instructor || '',
-    dayOfWeek: schedule?.dayOfWeek || '',
+    dayOfWeek: schedule?.dayOfWeek || 'Monday',
     startTime: schedule?.startTime || '',
     durationMinutes: schedule?.durationMinutes || 60,
     capacity: schedule?.capacity || 10,
@@ -28,10 +29,16 @@ const ClassScheduleForm = ({ schedule, onSave, closeDialog }: { schedule?: Class
     setFormData(prev => ({ ...prev, [name]: type === 'number' ? Number(value) : value }));
   };
 
+  const handleDayChange = (value: string) => {
+    setFormData(prev => ({ ...prev, dayOfWeek: value }));
+  };
+  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave(formData);
   };
+
+  const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
   return (
     <form onSubmit={handleSubmit}>
@@ -49,7 +56,16 @@ const ClassScheduleForm = ({ schedule, onSave, closeDialog }: { schedule?: Class
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="dayOfWeek" className="text-right">Day</Label>
-          <Input id="dayOfWeek" name="dayOfWeek" value={formData.dayOfWeek} onChange={handleChange} className="col-span-3" required />
+           <Select name="dayOfWeek" value={formData.dayOfWeek} onValueChange={handleDayChange}>
+            <SelectTrigger className="col-span-3">
+              <SelectValue placeholder="Select a day" />
+            </SelectTrigger>
+            <SelectContent>
+              {daysOfWeek.map(day => (
+                <SelectItem key={day} value={day}>{day}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="startTime" className="text-right">Start Time</Label>
