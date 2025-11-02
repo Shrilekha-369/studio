@@ -20,8 +20,8 @@ export default function ContactPage() {
     {
       icon: Mail,
       title: "Email Address",
-      value: "hello@onefitness.studio",
-      href: "mailto:hello@onefitness.studio",
+      value: "onefitnessstudios@gmail.com",
+      href: "mailto:onefitnessstudios@gmail.com",
     },
   ];
 
