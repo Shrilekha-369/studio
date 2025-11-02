@@ -10,7 +10,7 @@ export function Footer() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <Link href="/" className="flex items-center gap-2">
             <Image src="/Logo.jpg" alt="One Fitness Logo" width={24} height={24} />
-            <span className="font-headline font-bold text-lg">One Fitness</span>
+            <span className="font-headline font-bold text-lg whitespace-nowrap">One Fitness</span>
           </Link>
           <p className="text-sm text-foreground/60 text-center">
             © {new Date().getFullYear()} One Fitness Studio. All rights reserved.

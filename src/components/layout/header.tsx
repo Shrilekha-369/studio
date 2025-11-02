@@ -53,7 +53,7 @@ export function Header() {
       <div className="container flex h-14 max-w-screen-2xl items-center justify-between">
         <Link href="/" className="flex items-center gap-2" onClick={() => setIsOpen(false)}>
           <Image src="/Logo.jpg" alt="One Fitness Logo" width={32} height={32} />
-          <span className="font-headline font-bold text-lg">One Fitness</span>
+          <span className="font-headline font-bold text-lg whitespace-nowrap">One Fitness</span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-6 text-sm">
@@ -128,7 +128,7 @@ export function Header() {
               <div className="p-4">
                 <Link href="/" className="flex items-center gap-2 mb-8" onClick={() => setIsOpen(false)}>
                   <Image src="/Logo.jpg" alt="One Fitness Logo" width={32} height={32} />
-                  <span className="font-headline font-bold text-lg">One Fitness</span>
+                  <span className="font-headline font-bold text-lg whitespace-nowrap">One Fitness</span>
                 </Link>
                 <nav className="flex flex-col gap-4">
                   {navItems.map((item) => (
