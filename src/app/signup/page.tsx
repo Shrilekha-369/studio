@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -76,7 +76,7 @@ export default function SignUpPage() {
     // Redirection is handled by the useEffect hook, which will run after the user state updates.
 };
 
-  if (isUserLoading || (user && !user.isAnonymous)) {
+  if (isUserLoading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-200px)] py-12">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
