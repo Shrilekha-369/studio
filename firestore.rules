@@ -7,7 +7,7 @@
  * Data Structure:
  * - /classSchedules/{classScheduleId}: Stores class schedule information. Publicly readable, write access is restricted to admins.
  * - /users/{userId}: Stores user profile information. Only accessible by the user themselves.
- * - /users/{userId}/bookings/{bookingId}: Stores booking information for a specific user. Only accessible by the user themselves.
+ * - /users/{userId}/bookings/{bookingId}: Stores booking information for a specific user. Accessible by the user and admins.
  * - /galleryItems/{galleryItemId}: Stores gallery items (images, descriptions). Publicly readable, write access is restricted to admins.
  *
  * Key Security Decisions:
@@ -61,16 +61,16 @@ service cloud.firestore {
      * @description Controls access to booking information for a specific user.
      * @path /users/{userId}/bookings/{bookingId}
      * @allow (create): A user can create a booking for themselves if the userId matches their auth UID.
-     * @allow (get, update, delete): A user can only access and modify their own bookings.
+     * @allow (get, list): A user can access their own bookings.
+     * @allow (update): An admin can update any booking (e.g., to change status).
      * @deny (create): A user cannot create a booking with a userId that does not match their auth UID.
-     * @deny (get, update, delete): A user cannot access or modify another user's bookings.
-     * @principle Enforces document ownership for bookings.
+     * @deny (get, update, delete): A user cannot access or modify another user's bookings, except for admins updating.
+     * @principle Enforces document ownership for bookings, with admin override for updates.
      */
     match /users/{userId}/bookings/{bookingId} {
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
+      allow get, list: if isSignedIn() && isOwner(userId);
       allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isSignedIn() && isOwner(userId) && resource.data.userId == request.resource.data.userId;
+      allow update: if isAdmin() || (isSignedIn() && isOwner(userId) && resource.data.userId == request.resource.data.userId);
       allow delete: if isSignedIn() && isExistingOwner(userId);
     }
 
@@ -85,6 +85,14 @@ service cloud.firestore {
       allow get, list: if true;
       allow create, update, delete: if isAdmin();
     }
+    
+    /**
+     * @description Allow admins to list all bookings for management.
+     * @path /users/{userId}/bookings/{bookingId}
+     */
+     match /users/{userId}/bookings/{bookingId} {
+        allow list: if isAdmin();
+     }
 
     /**
      * @description Checks if the user is signed in.

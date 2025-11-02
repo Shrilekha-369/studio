@@ -4,6 +4,7 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dumbbell, HeartPulse, Sparkles, Star, Users } from 'lucide-react';
+import { useUser } from '@/firebase';
 
 export default function Home() {
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero-bg');

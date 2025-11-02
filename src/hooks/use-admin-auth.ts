@@ -9,14 +9,19 @@ export function useAdminAuth() {
   const router = useRouter();
 
   useEffect(() => {
-    // If loading, do nothing yet.
     if (isUserLoading) {
+      return; // Wait until user status is resolved
+    }
+
+    if (!user) {
+      // If no user, redirect to login
+      router.push('/login');
       return;
     }
 
-    // If not logged in or not an admin, redirect to home page.
-    if (!user || !claims?.admin) {
-      router.push('/login');
+    if (!claims?.admin) {
+      // If user is not an admin, redirect to their profile
+      router.push('/my-profile');
     }
   }, [user, claims, isUserLoading, router]);
 

@@ -5,7 +5,7 @@ import { Dumbbell, Menu, LogOut, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import { useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useUser, useAuth } from "@/firebase";
 import { signOut } from "firebase/auth";
@@ -30,12 +30,14 @@ const navItems = [
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
-  const { user, isUserLoading } = useUser();
+  const router = useRouter();
+  const { user, claims, isUserLoading } = useUser();
   const auth = useAuth();
 
   const handleSignOut = () => {
     if (auth) {
       signOut(auth);
+      router.push('/');
     }
   };
 
@@ -68,7 +70,7 @@ export function Header() {
         </nav>
         
         <div className="flex items-center gap-2">
-          {!isUserLoading && (
+           {!isUserLoading && (
             user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -83,11 +85,16 @@ export function Header() {
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium leading-none">My Account</p>
-                      <p className="text-xs leading-none text-muted-foreground">
-                        {user.isAnonymous ? "Anonymous User" : user.email}
-                      </p>
+                       <p className="text-xs leading-none text-muted-foreground">
+                         {user.isAnonymous ? "Guest" : user.email}
+                       </p>
                     </div>
                   </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => router.push(claims?.admin ? '/admin' : '/my-profile')}>
+                    <UserIcon className="mr-2 h-4 w-4" />
+                    <span>{claims?.admin ? 'Admin Dashboard' : 'My Profile'}</span>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut className="mr-2 h-4 w-4" />
@@ -96,11 +103,14 @@ export function Header() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button asChild variant="ghost" size="sm">
-                <Link href="/login">
-                  <UserIcon className="mr-2 h-4 w-4"/> Login
-                </Link>
-              </Button>
+              <div className="hidden md:flex items-center gap-2">
+                <Button asChild variant="ghost" size="sm">
+                  <Link href="/login">Login</Link>
+                </Button>
+                <Button asChild size="sm">
+                  <Link href="/signup">Sign Up</Link>
+                </Button>
+              </div>
             )
           )}
 
@@ -133,6 +143,24 @@ export function Header() {
                       </Link>
                     </SheetClose>
                   ))}
+                   <DropdownMenuSeparator />
+                   {user ? (
+                     <>
+                        <SheetClose asChild>
+                           <Link href={claims?.admin ? '/admin' : '/my-profile'} className="text-lg font-medium">Profile</Link>
+                        </SheetClose>
+                        <Button onClick={handleSignOut} variant="ghost" className="justify-start text-lg font-medium">Logout</Button>
+                     </>
+                   ) : (
+                      <>
+                        <SheetClose asChild>
+                           <Link href="/login" className="text-lg font-medium">Login</Link>
+                        </SheetClose>
+                        <SheetClose asChild>
+                           <Link href="/signup" className="text-lg font-medium">Sign Up</Link>
+                        </SheetClose>
+                      </>
+                   )}
                 </nav>
               </div>
             </SheetContent>

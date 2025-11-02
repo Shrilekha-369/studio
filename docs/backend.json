@@ -67,13 +67,23 @@
           "type": "string",
           "description": "The date the booking was made.",
           "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the booking.",
+          "enum": ["pending", "approved", "rejected"]
+        },
+        "rejectionReason": {
+            "type": "string",
+            "description": "Reason for booking rejection, if applicable."
         }
       },
       "required": [
         "id",
         "classScheduleId",
         "userId",
-        "bookingDate"
+        "bookingDate",
+        "status"
       ]
     },
     "UserProfile": {

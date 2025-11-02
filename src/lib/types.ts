@@ -15,6 +15,12 @@ export type Booking = {
   classScheduleId: string;
   userId: string;
   bookingDate: string;
+  status: 'pending' | 'approved' | 'rejected';
+  rejectionReason?: string;
+  // Denormalized fields for easier display
+  className?: string;
+  classStartTime?: string;
+  classDay?: string;
 };
 
 export type UserProfile = {

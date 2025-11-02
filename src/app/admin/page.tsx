@@ -4,6 +4,7 @@ import { useAdminAuth } from '@/hooks/use-admin-auth';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ClassScheduleManager } from '@/components/admin/class-schedule-manager';
 import { GalleryManager } from '@/components/admin/gallery-manager';
+import { BookingManager } from '@/components/admin/booking-manager';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function AdminPage() {
@@ -32,11 +33,15 @@ export default function AdminPage() {
         <p className="mt-2 text-lg text-foreground/80">Welcome, {user.email}. Manage your studio here.</p>
       </div>
 
-      <Tabs defaultValue="classes" className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2 mb-8">
-          <TabsTrigger value="classes" className="font-headline">Class Schedules</TabsTrigger>
+      <Tabs defaultValue="bookings" className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-3 mb-8">
+          <TabsTrigger value="bookings" className="font-headline">Bookings</TabsTrigger>
+          <TabsTrigger value="classes" className="font-headline">Classes</TabsTrigger>
           <TabsTrigger value="gallery" className="font-headline">Gallery</TabsTrigger>
         </TabsList>
+        <TabsContent value="bookings">
+          <BookingManager />
+        </TabsContent>
         <TabsContent value="classes">
           <ClassScheduleManager />
         </TabsContent>
