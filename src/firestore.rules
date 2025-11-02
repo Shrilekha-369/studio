@@ -30,17 +30,15 @@ service cloud.firestore {
 
     /**
      * @description Publicly readable collections with admin-only write access.
-     * This rule allows any user to read from classSchedules and galleryItems,
-     * but restricts all write operations (create, update, delete) to admins.
      */
     match /classSchedules/{classScheduleId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
 
     match /galleryItems/{galleryItemId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
 
     /**
@@ -49,20 +47,14 @@ service cloud.firestore {
     match /users/{userId} {
       /**
        * @description Controls access to the user's own profile document.
-       * @allow (get): The user can read their own profile.
-       * @allow (list): No one can list user profiles.
-       * @allow (create, update): The user can manage their own profile document.
        */
       allow get, update: if isOwner(userId);
       allow list: if false; // Explicitly deny listing users for security.
-      allow create: if isOwner(userId);
-      allow delete: if false; // Disallow user profile deletion for now.
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow delete: if isOwner(userId);
 
       /**
        * @description Controls access to a user's bookings subcollection.
-       * @allow (get, list): The user can read their own bookings.
-       * @allow (create): The user can create a booking for themselves.
-       * @allow (update, delete): The user or an admin can update or delete a booking.
        */
       match /bookings/{bookingId} {
         allow get, list: if isOwner(userId) || isAdmin();
@@ -81,7 +73,6 @@ service cloud.firestore {
 
     /**
      * @description Checks if the user is signed in.
-     * @return {bool} True if the user is signed in, false otherwise.
      */
     function isSignedIn() {
       return request.auth != null;
@@ -89,8 +80,6 @@ service cloud.firestore {
 
     /**
      * @description Checks if the user is the owner of the resource.
-     * @param {string} userId The user ID to check.
-     * @return {bool} True if the user is the owner, false otherwise.
      */
     function isOwner(userId) {
       return request.auth != null && request.auth.uid == userId;
@@ -98,7 +87,6 @@ service cloud.firestore {
 
     /**
      * @description Checks if the signed-in user has the 'admin' custom claim.
-     * @return {bool} True if the user is an admin, false otherwise.
      */
     function isAdmin() {
       return request.auth != null && request.auth.token.admin == true;

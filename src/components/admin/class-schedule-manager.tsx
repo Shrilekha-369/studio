@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useFirestore } from '@/firebase';
-import { collection, doc, query, orderBy, getDocs, deleteDoc } from 'firebase/firestore';
+import { collection, doc, query, orderBy, getDocs, deleteDoc, addDoc, updateDoc } from 'firebase/firestore';
 import type { ClassSchedule } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -157,6 +157,7 @@ export function ClassScheduleManager() {
   
   useEffect(() => {
     fetchSchedules();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firestore]);
 
 
@@ -183,7 +184,8 @@ export function ClassScheduleManager() {
     console.log(`Attempting to delete document with ID: ${id}`);
     if (window.confirm('Are you sure you want to delete this class?')) {
       try {
-        await deleteDoc(doc(firestore, 'classSchedules', id));
+        const docRef = doc(firestore, 'classSchedules', id);
+        await deleteDoc(docRef);
         toast({ title: 'Success', description: 'Class schedule deleted.' });
         setSchedules((prevSchedules) => prevSchedules.filter((s) => s.id !== id));
       } catch (error: any) {
