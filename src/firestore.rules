@@ -65,7 +65,7 @@ service cloud.firestore {
        * @allow (update, delete): The user or an admin can update or delete a booking.
        */
       match /bookings/{bookingId} {
-        allow get, list: if isOwner(userId);
+        allow get, list: if isOwner(userId) || isAdmin();
         allow create: if isOwner(userId) && request.resource.data.userId == userId;
         allow update, delete: if isOwner(userId) || isAdmin();
       }
