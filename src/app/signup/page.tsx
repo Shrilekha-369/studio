@@ -118,6 +118,11 @@ export default function SignUpPage() {
       await initiateGoogleSignIn(auth);
       // The onAuthStateChanged listener and useEffect will handle profile creation and redirection
     } catch (error: any) {
+      // Don't show a toast for popup closed by user
+      if (error.code === 'auth/popup-closed-by-user') {
+          setIsLoading(false);
+          return;
+      }
       toast({
         title: 'Google Sign-In Failed',
         description: error.message,
