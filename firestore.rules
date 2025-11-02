@@ -35,7 +35,7 @@ service cloud.firestore {
      */
     match /{collectionName}/{docId} where collectionName in ['classSchedules', 'galleryItems'] {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
 
     /**
