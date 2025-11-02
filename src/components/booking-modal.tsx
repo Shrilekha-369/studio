@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import type { ClassSchedule } from "@/lib/types";
 import { useState, useEffect } from "react";
-import { useUser, useFirestore, useDoc, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, initiateAnonymousSignIn, useAuth } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import type { UserProfile, Booking } from '@/lib/types';
 import Link from "next/link";
@@ -29,6 +29,7 @@ export function BookingModal({ classInfo }: { classInfo: ClassSchedule }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const firestore = useFirestore();
+  const auth = useAuth();
   const { user, isUserLoading } = useUser();
   const [formPhone, setFormPhone] = useState('');
 
@@ -37,6 +38,14 @@ export function BookingModal({ classInfo }: { classInfo: ClassSchedule }) {
     [firestore, user]
   );
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+        if(auth) {
+            initiateAnonymousSignIn(auth);
+        }
+    }
+  }, [isUserLoading, user, auth]);
 
   useEffect(() => {
     // Only update phone number from profile if the user hasn't started typing
@@ -50,9 +59,10 @@ export function BookingModal({ classInfo }: { classInfo: ClassSchedule }) {
 
     if (!user || user.isAnonymous) {
         toast({
-            title: "Authentication Error",
-            description: "You must be signed in to book a demo.",
-            variant: "destructive"
+            title: "Please Sign In",
+            description: "You must be signed in to book a demo. Please sign up or log in.",
+            variant: "destructive",
+            action: <DialogClose asChild><Button asChild><Link href="/login">Login</Link></Button></DialogClose>
         });
         return;
     }
@@ -114,8 +124,8 @@ export function BookingModal({ classInfo }: { classInfo: ClassSchedule }) {
           </div>
         )
     }
-    // Prompt user to log in if not authenticated
-    if (!user || user.isAnonymous) {
+    
+    if (user && user.isAnonymous) {
         return (
              <DialogHeader className="p-6">
                 <DialogTitle className="font-headline text-primary">Join Us to Book a Demo</DialogTitle>
@@ -144,13 +154,13 @@ export function BookingModal({ classInfo }: { classInfo: ClassSchedule }) {
               <Label htmlFor="name" className="text-right">
                 Name
               </Label>
-              <Input id="name" name="name" className="col-span-3" required value={userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : user.displayName || ''} disabled />
+              <Input id="name" name="name" className="col-span-3" required value={userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : user?.displayName || ''} disabled />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="email" className="text-right">
                 Email
               </Label>
-              <Input id="email" name="email" type="email" className="col-span-3" required value={user.email || ''} disabled />
+              <Input id="email" name="email" type="email" className="col-span-3" required value={user?.email || ''} disabled />
             </div>
              <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="phone" className="text-right">

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
@@ -15,7 +16,7 @@ import { BookingModal } from '@/components/booking-modal';
 import { Dumbbell, HeartPulse, Bike, Activity, LucideProps } from 'lucide-react';
 import type { ClassSchedule } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 
 const getLevel = (className: string) => {
   if (className.toLowerCase().includes('hiit')) return 'Advanced';
@@ -66,7 +67,7 @@ export default function BookingPage() {
   const scheduleWithSpots = schedule?.map(s => ({
     ...s,
     // This is a mock calculation. A real implementation would need to query bookings.
-    spotsLeft: s.capacity - (Math.floor(Math.random() * (s.capacity / 2))), 
+    spotsLeft: s.capacity > 0 ? s.capacity - (Math.floor(Math.random() * (s.capacity / 2))) : 0, 
   })) || [];
 
   return (
