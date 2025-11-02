@@ -264,7 +264,3 @@ export function ClassScheduleManager() {
     </div>
   );
 }
-
-    
-
-    
