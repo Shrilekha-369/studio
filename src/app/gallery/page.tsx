@@ -1,21 +1,23 @@
+
+'use client';
+
 import Image from 'next/image';
-import { PlaceHolderImages, type ImagePlaceholder } from '@/lib/placeholder-images';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
+import type { GalleryItem } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 
-const venueImages = PlaceHolderImages.filter(p => p.id.startsWith('gallery-venue'));
-const competitionImages = PlaceHolderImages.filter(p => p.id.startsWith('gallery-competition'));
-
-const ImageCard = ({ image }: { image: ImagePlaceholder }) => (
+const ImageCard = ({ image }: { image: GalleryItem }) => (
   <Card className="overflow-hidden group">
     <CardContent className="p-0">
       <div className="relative aspect-w-4 aspect-h-3">
         <Image
           src={image.imageUrl}
-          alt={image.description}
+          alt={image.description || image.title || 'Gallery image'}
           fill
           className="object-cover transition-transform duration-300 group-hover:scale-105"
-          data-ai-hint={image.imageHint}
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         />
       </div>
@@ -23,7 +25,40 @@ const ImageCard = ({ image }: { image: ImagePlaceholder }) => (
   </Card>
 );
 
+const GalleryGrid = ({ images, isLoading }: { images: GalleryItem[] | null; isLoading: boolean }) => {
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="aspect-w-4 aspect-h-3">
+             <Skeleton className="w-full h-full" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (!images || images.length === 0) {
+    return <p className="text-center text-foreground/80">No images in this category yet.</p>;
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {images.map(image => (
+        <ImageCard key={image.id} image={image} />
+      ))}
+    </div>
+  );
+};
+
 export default function GalleryPage() {
+  const firestore = useFirestore();
+  const galleryItemsRef = useMemoFirebase(() => collection(firestore, 'galleryItems'), [firestore]);
+  const { data: galleryItems, isLoading } = useCollection<GalleryItem>(galleryItemsRef);
+
+  const venueImages = useMemoFirebase(() => galleryItems?.filter(item => item.itemType === 'venue') || null, [galleryItems]);
+  const competitionImages = useMemoFirebase(() => galleryItems?.filter(item => item.itemType === 'competition') || null, [galleryItems]);
+
   return (
     <div className="container max-w-screen-xl mx-auto py-12 px-4 md:px-6">
       <div className="text-center mb-12">
@@ -37,18 +72,10 @@ export default function GalleryPage() {
           <TabsTrigger value="competition" className="font-headline">Competition Wins</TabsTrigger>
         </TabsList>
         <TabsContent value="venue">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {venueImages.map(image => (
-              <ImageCard key={image.id} image={image} />
-            ))}
-          </div>
+          <GalleryGrid images={venueImages} isLoading={isLoading} />
         </TabsContent>
         <TabsContent value="competition">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {competitionImages.map(image => (
-              <ImageCard key={image.id} image={image} />
-            ))}
-          </div>
+          <GalleryGrid images={competitionImages} isLoading={isLoading} />
         </TabsContent>
       </Tabs>
     </div>

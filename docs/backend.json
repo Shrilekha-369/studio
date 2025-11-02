@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "ClassSchedule": {
@@ -140,11 +141,11 @@
         },
         "title": {
           "type": "string",
-          "description": "Title of the gallery item (e.g., Competition Win 2023)."
+          "description": "Optional title of the gallery item (e.g., Competition Win 2023)."
         },
         "description": {
           "type": "string",
-          "description": "Description of the gallery item."
+          "description": "Optional description of the gallery item."
         },
         "imageUrl": {
           "type": "string",
@@ -158,8 +159,6 @@
       },
       "required": [
         "id",
-        "title",
-        "description",
         "imageUrl",
         "itemType"
       ]

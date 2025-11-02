@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useCollection, useFirestore, useMemoFirebase, useStorage } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -48,8 +48,8 @@ const GalleryItemForm = ({ item, onSave, closeDialog }: { item?: GalleryItem; on
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title || (!formData.imageUrl && !file)) {
-        toast({ title: 'Missing Fields', description: 'Please provide a title and an image.', variant: 'destructive' });
+    if (!file && !item?.imageUrl) {
+        toast({ title: 'Missing Image', description: 'Please upload an image.', variant: 'destructive' });
         return;
     }
     onSave(formData, file);
@@ -60,18 +60,10 @@ const GalleryItemForm = ({ item, onSave, closeDialog }: { item?: GalleryItem; on
       <DialogHeader>
         <DialogTitle>{item ? 'Edit' : 'Add'} Gallery Item</DialogTitle>
         <DialogDescription>
-            {item ? 'Update the details for this gallery item.' : 'Fill in the details for the new gallery item.'}
+            {item ? 'Update the details for this gallery item.' : 'Upload an image and provide optional details.'}
         </DialogDescription>
       </DialogHeader>
       <div className="grid gap-4 py-4">
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="title" className="text-right">Title</Label>
-          <Input id="title" name="title" value={formData.title} onChange={handleChange} className="col-span-3" required />
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="description" className="text-right">Description</Label>
-          <Input id="description" name="description" value={formData.description} onChange={handleChange} className="col-span-3" />
-        </div>
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="image" className="text-right">Image</Label>
           <div className="col-span-3">
@@ -84,10 +76,18 @@ const GalleryItemForm = ({ item, onSave, closeDialog }: { item?: GalleryItem; on
             <Input id="image-upload" type="file" accept="image/*" onChange={handleFileChange} className="sr-only" />
             {item?.imageUrl && !file && (
               <div className="mt-2 text-xs text-muted-foreground">
-                Current image: <a href={item.imageUrl} target="_blank" rel="noopener noreferrer" className="underline">View</a>. Upload a new file to replace it.
+                Current image: <a href={item.imageUrl} target="_blank" rel="noopener noreferrer" className="underline">View</a>. Upload to replace.
               </div>
             )}
           </div>
+        </div>
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="title" className="text-right">Title</Label>
+          <Input id="title" name="title" value={formData.title} onChange={handleChange} className="col-span-3" />
+        </div>
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="description" className="text-right">Description</Label>
+          <Input id="description" name="description" value={formData.description} onChange={handleChange} className="col-span-3" />
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="itemType" className="text-right">Type</Label>
@@ -136,16 +136,22 @@ export function GalleryManager() {
         setUploadProgress(100);
       }
 
+      if (!imageUrl) {
+        toast({ title: 'Error', description: 'No image provided.', variant: 'destructive' });
+        return;
+      }
+
       const dataToSave = { ...data, imageUrl };
       
       if (editingItem) {
         const docRef = doc(firestore, 'galleryItems', editingItem.id);
         await updateDoc(docRef, dataToSave);
         toast({ title: 'Success', description: 'Gallery item updated.' });
+        // The real-time listener from useCollection will handle the UI update
       } else {
-        // We let useCollection handle the update for adds
         await addDoc(collection(firestore, 'galleryItems'), dataToSave);
         toast({ title: 'Success', description: 'New gallery item added.' });
+        // The real-time listener from useCollection will handle the UI update
       }
       closeDialog();
     } catch (error: any) {
@@ -162,10 +168,7 @@ export function GalleryManager() {
             const docRef = doc(firestore, 'galleryItems', id);
             await deleteDoc(docRef);
             toast({ title: 'Success', description: 'Gallery item deleted.' });
-            // Manually update the state to reflect deletion
-            if (galleryItems) {
-                setGalleryItems(galleryItems.filter(item => item.id !== id));
-            }
+            // The real-time listener from useCollection will automatically update the UI.
         } catch (error: any) {
             toast({ title: 'Deletion Failed', description: error.message, variant: 'destructive' });
         }
@@ -186,9 +189,16 @@ export function GalleryManager() {
     <div className="border rounded-lg shadow-lg overflow-hidden bg-card p-4">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold font-headline">Manage Gallery</h2>
-        <Button onClick={() => openDialog()}>
-          <PlusCircle className="mr-2 h-4 w-4" /> Add Item
-        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+                <Button onClick={() => openDialog()}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add Item
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <GalleryItemForm item={editingItem} onSave={handleSave} closeDialog={closeDialog} />
+            </DialogContent>
+        </Dialog>
       </div>
       
       {uploadProgress !== null && (
@@ -198,43 +208,40 @@ export function GalleryManager() {
         </div>
       )}
 
-      {isLoading && <p>Loading gallery items...</p>}
+      {isLoading && <p className='py-4'>Loading gallery items...</p>}
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Image</TableHead>
-            <TableHead>Title</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead className='text-right'>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {galleryItems?.map((item) => (
-            <TableRow key={item.id}>
-              <TableCell>
-                <Image src={item.imageUrl} alt={item.title} width={80} height={60} className="rounded-md object-cover" />
-              </TableCell>
-              <TableCell>{item.title}</TableCell>
-              <TableCell className="capitalize">{item.itemType}</TableCell>
-              <TableCell className='text-right'>
-                <Button variant="ghost" size="icon" onClick={() => openDialog(item)}>
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)}>
-                    <Trash2 className="h-4 w-4 text-destructive"/>
-                </Button>
-              </TableCell>
+      {!isLoading && (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Image</TableHead>
+              <TableHead>Title</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead className='text-right'>Actions</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {galleryItems?.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell>
+                  <Image src={item.imageUrl} alt={item.title || 'Gallery Image'} width={80} height={60} className="rounded-md object-cover" />
+                </TableCell>
+                <TableCell>{item.title}</TableCell>
+                <TableCell className="capitalize">{item.itemType}</TableCell>
+                <TableCell className='text-right'>
+                  <Button variant="ghost" size="icon" onClick={() => openDialog(item)}>
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)}>
+                      <Trash2 className="h-4 w-4 text-destructive"/>
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
 
-      <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-            <GalleryItemForm item={editingItem} onSave={handleSave} closeDialog={closeDialog} />
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
