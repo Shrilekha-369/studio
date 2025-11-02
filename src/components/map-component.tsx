@@ -17,7 +17,7 @@ if (typeof window !== 'undefined') {
 
 
 export function MapComponent() {
-  const position: [number, number] = [18.4875, -67.1279]; // ONE Fitness Studio Aguadilla
+  const position: [number, number] = [12.9839, 77.6693]; // New Bengaluru Address
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
 
@@ -32,7 +32,7 @@ export function MapComponent() {
       }).addTo(map);
 
       L.marker(position).addTo(map)
-        .bindPopup('One Fitness Studio <br /> Aguadilla, PR')
+        .bindPopup('One Fitness Studio <br /> Bengaluru, KA')
         .openPopup();
     }
 
@@ -43,7 +43,7 @@ export function MapComponent() {
         mapInstanceRef.current = null;
       }
     };
-  }, [position]); // Only re-run if position changes, which is stable here.
+  }, []); // Empty dependency array to ensure this runs only once on mount and cleans up on unmount.
 
   return (
     <div ref={mapRef} style={{ height: '100%', width: '100%' }} className="rounded-lg" />

@@ -8,8 +8,8 @@ export default function ContactPage() {
     {
       icon: MapPin,
       title: "Our Address",
-      value: "PR-459, Aguadilla, 00603, Puerto Rico",
-      href: "https://www.google.com/maps/search/?api=1&query=18.4875,-67.1279",
+      value: "315, 2, Kaggadasapura Main Rd, above Union Bank of India, Varsova Layout, Kaggadasapura, Bengaluru, Karnataka 560093",
+      href: "https://www.google.com/maps/search/?api=1&query=12.9839,77.6693",
     },
     {
       icon: Phone,
