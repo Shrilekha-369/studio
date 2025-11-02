@@ -1,6 +1,6 @@
-
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
@@ -8,9 +8,10 @@ import type { GalleryItem } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ImageModal } from '@/components/image-modal';
 
-const ImageCard = ({ image }: { image: GalleryItem }) => (
-  <Card className="overflow-hidden group">
+const ImageCard = ({ image, onImageClick }: { image: GalleryItem, onImageClick: (image: GalleryItem) => void }) => (
+  <Card className="overflow-hidden group cursor-pointer" onClick={() => onImageClick(image)}>
     <CardContent className="p-0">
       <div className="relative w-full" style={{ paddingBottom: '75%' /* 4:3 aspect ratio */ }}>
         <Image
@@ -25,7 +26,7 @@ const ImageCard = ({ image }: { image: GalleryItem }) => (
   </Card>
 );
 
-const GalleryGrid = ({ images, isLoading }: { images: GalleryItem[] | null; isLoading: boolean }) => {
+const GalleryGrid = ({ images, isLoading, onImageClick }: { images: GalleryItem[] | null; isLoading: boolean, onImageClick: (image: GalleryItem) => void; }) => {
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -45,7 +46,7 @@ const GalleryGrid = ({ images, isLoading }: { images: GalleryItem[] | null; isLo
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
       {images.map(image => (
-        <ImageCard key={image.id} image={image} />
+        <ImageCard key={image.id} image={image} onImageClick={onImageClick} />
       ))}
     </div>
   );
@@ -56,8 +57,18 @@ export default function GalleryPage() {
   const galleryItemsRef = useMemoFirebase(() => collection(firestore, 'galleryItems'), [firestore]);
   const { data: galleryItems, isLoading } = useCollection<GalleryItem>(galleryItemsRef);
 
+  const [selectedImage, setSelectedImage] = useState<GalleryItem | null>(null);
+
   const venueImages = useMemoFirebase(() => galleryItems?.filter(item => item.itemType === 'venue') || null, [galleryItems]);
   const competitionImages = useMemoFirebase(() => galleryItems?.filter(item => item.itemType === 'competition') || null, [galleryItems]);
+
+  const handleImageClick = (image: GalleryItem) => {
+    setSelectedImage(image);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedImage(null);
+  };
 
   return (
     <div className="container max-w-screen-xl mx-auto py-12 px-4 md:px-6">
@@ -72,12 +83,18 @@ export default function GalleryPage() {
           <TabsTrigger value="competition" className="font-headline">Competition Wins</TabsTrigger>
         </TabsList>
         <TabsContent value="venue">
-          <GalleryGrid images={venueImages} isLoading={isLoading} />
+          <GalleryGrid images={venueImages} isLoading={isLoading} onImageClick={handleImageClick} />
         </TabsContent>
         <TabsContent value="competition">
-          <GalleryGrid images={competitionImages} isLoading={isLoading} />
+          <GalleryGrid images={competitionImages} isLoading={isLoading} onImageClick={handleImageClick} />
         </TabsContent>
       </Tabs>
+      
+      <ImageModal
+        isOpen={!!selectedImage}
+        onClose={handleCloseModal}
+        image={selectedImage}
+      />
     </div>
   );
 }
