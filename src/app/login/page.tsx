@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth, useUser, initiateGoogleSignIn } from '@/firebase';
+import { useAuth, initiateGoogleSignIn } from '@/firebase';
+import { useUser } from '@/firebase/provider';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,15 +31,15 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // If user is already logged in, redirect them.
-  if (!isUserLoading && user && !user.isAnonymous) {
-    if (claims?.admin) {
-      router.push('/admin');
-    } else {
-      router.push('/my-profile');
+  useEffect(() => {
+    if (!isUserLoading && user && !user.isAnonymous) {
+      if (claims?.admin) {
+        router.push('/admin');
+      } else {
+        router.push('/my-profile');
+      }
     }
-    return null; // Render nothing while redirecting
-  }
+  }, [isUserLoading, user, claims, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +76,14 @@ export default function LoginPage() {
     }
   };
 
+  if (isUserLoading || (user && !user.isAnonymous)) {
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-200px)] py-12">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-200px)] py-12">
       <Card className="w-full max-w-sm">
@@ -83,7 +92,7 @@ export default function LoginPage() {
           <CardDescription>Enter your email below to login to your account.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
-            <Button variant="outline" onClick={handleGoogleSignIn} disabled={isLoading || isUserLoading}>
+            <Button variant="outline" onClick={handleGoogleSignIn} disabled={isLoading}>
                 {isLoading ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current" /> : <GoogleIcon />}
                 <span className="ml-2">Sign in with Google</span>
             </Button>
@@ -120,8 +129,8 @@ export default function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                 />
                 </div>
-                <Button type="submit" className="w-full" disabled={isLoading || isUserLoading}>
-                {isLoading || isUserLoading ? 'Signing In...' : 'Sign In'}
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? 'Signing In...' : 'Sign In'}
                 </Button>
             </form>
         </CardContent>

@@ -3,14 +3,15 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth, useUser, useFirestore, setDocumentNonBlocking, initiateGoogleSignIn } from '@/firebase';
-import { createUserWithEmailAndPassword, updateProfile, getAdditionalUserInfo } from 'firebase/auth';
+import { useAuth, useFirestore, setDocumentNonBlocking, initiateGoogleSignIn } from '@/firebase';
+import { useUser } from '@/firebase/provider';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -55,8 +56,12 @@ export default function SignUpPage() {
   }, [user, isUserLoading, firestore, router]);
 
 
-  if (!isUserLoading && user && !user.isAnonymous) {
-    return null;
+  if (isUserLoading || (user && !user.isAnonymous)) {
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-200px)] py-12">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
+      </div>
+    );
   }
 
   const handleEmailSignUp = async (e: React.FormEvent) => {
@@ -86,17 +91,14 @@ export default function SignUpPage() {
       };
 
       const userDocRef = doc(firestore, 'users', firebaseUser.uid);
-      // This is now handled by the useEffect, but we can do it here for email sign up for immediate effect
       setDocumentNonBlocking(userDocRef, userProfile, { merge: false });
-
 
       toast({
         title: 'Account Created!',
         description: "Welcome! You've been signed up successfully.",
       });
 
-      router.push('/my-profile');
-
+      // The useEffect will handle the redirect
     } catch (error: any) {
       toast({
         title: 'Sign Up Failed',
@@ -131,7 +133,7 @@ export default function SignUpPage() {
           <CardDescription>Enter your details to get started.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <Button variant="outline" onClick={handleGoogleSignUp} disabled={isLoading || isUserLoading}>
+          <Button variant="outline" onClick={handleGoogleSignUp} disabled={isLoading}>
              {isLoading ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current" /> : <GoogleIcon />}
              <span className="ml-2">Sign up with Google</span>
           </Button>
@@ -179,8 +181,8 @@ export default function SignUpPage() {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-             <Button type="submit" className="w-full" disabled={isLoading || isUserLoading}>
-              {isLoading || isUserLoading ? 'Creating Account...' : 'Sign Up'}
+             <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? 'Creating Account...' : 'Sign Up'}
             </Button>
           </form>
         </CardContent>
