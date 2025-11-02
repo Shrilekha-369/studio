@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -5,7 +6,7 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, query, orderBy, deleteDoc } from 'firebase/firestore';
 import type { ClassSchedule } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -57,6 +58,9 @@ const ClassScheduleForm = ({ schedule, onSave, closeDialog }: { schedule?: Class
     <form onSubmit={handleSubmit}>
       <DialogHeader>
         <DialogTitle>{schedule ? 'Edit Class' : 'Add New Class'}</DialogTitle>
+        <DialogDescription>
+            {schedule ? 'Update the details for this class.' : 'Fill in the details for the new class schedule.'}
+        </DialogDescription>
       </DialogHeader>
       <div className="grid gap-4 py-4">
         <div className="grid grid-cols-4 items-center gap-4">
