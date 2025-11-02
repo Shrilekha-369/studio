@@ -1,14 +1,21 @@
 import { Mail, MapPin, Phone } from "lucide-react";
 import { MapComponent } from "@/components/map-component";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import dynamic from "next/dynamic";
+
+const DynamicMap = dynamic(() => import('@/components/map-component').then(mod => mod.MapComponent), {
+  ssr: false,
+  loading: () => <div className="h-full w-full bg-muted flex items-center justify-center rounded-lg"><p>Loading map...</p></div>
+});
+
 
 export default function ContactPage() {
   const contactDetails = [
     {
       icon: MapPin,
       title: "Our Address",
-      value: "123 Fitness Ave, Wellness City, 12345",
-      href: "#",
+      value: "PR-459, Aguadilla, 00603, Puerto Rico",
+      href: "https://www.google.com/maps/search/?api=1&query=18.4875,-67.1279",
     },
     {
       icon: Phone,
@@ -44,6 +51,8 @@ export default function ContactPage() {
               <CardContent>
                 <a
                   href={detail.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="text-lg text-foreground/80 hover:text-primary transition-colors"
                 >
                   {detail.value}
@@ -54,7 +63,7 @@ export default function ContactPage() {
         </div>
         
         <div className="h-[400px] lg:h-full w-full rounded-lg overflow-hidden shadow-lg">
-          <MapComponent />
+          <DynamicMap />
         </div>
       </div>
     </div>

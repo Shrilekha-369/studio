@@ -3,6 +3,7 @@ import './globals.css';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { Toaster } from "@/components/ui/toaster";
+import 'leaflet/dist/leaflet.css';
 
 export const metadata: Metadata = {
   title: 'One Fitness Studio',

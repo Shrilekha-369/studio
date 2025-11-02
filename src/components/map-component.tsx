@@ -1,36 +1,33 @@
 "use client";
 
-import { APIProvider, Map, AdvancedMarker } from "@vis.gl/react-google-maps";
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix for default icon path issue with webpack
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+});
+
 
 export function MapComponent() {
-  const position = { lat: 34.052235, lng: -118.243683 }; // Placeholder: Los Angeles City Hall
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-
-  if (!apiKey) {
-    return (
-      <div className="h-full w-full bg-muted flex items-center justify-center rounded-lg">
-        <div className="text-center p-4">
-          <p className="font-semibold">Map Could Not Be Loaded</p>
-          <p className="text-muted-foreground text-sm">
-            Google Maps API Key is missing.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const position: [number, number] = [18.4875, -67.1279]; // ONE Fitness Studio Aguadilla
 
   return (
-    <APIProvider apiKey={apiKey}>
-      <Map
-        defaultCenter={position}
-        defaultZoom={15}
-        mapId="one-fitness-map"
-        gestureHandling={'greedy'}
-        disableDefaultUI={true}
-        className="rounded-lg"
-      >
-        <AdvancedMarker position={position} />
-      </Map>
-    </APIProvider>
+      <MapContainer center={position} zoom={15} scrollWheelZoom={false} className="h-full w-full rounded-lg">
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <Marker position={position}>
+          <Popup>
+            One Fitness Studio <br /> Aguadilla, PR
+          </Popup>
+        </Marker>
+      </MapContainer>
   );
 }
