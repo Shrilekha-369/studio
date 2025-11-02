@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useFirestore } from '@/firebase';
-import { collectionGroup, query, where, getDocs, doc, DocumentSnapshot, getDoc, DocumentData, DocumentReference } from 'firebase/firestore';
+import { collectionGroup, query, where, getDocs, doc, getDoc, DocumentData } from 'firebase/firestore';
 import type { Booking, UserProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -28,36 +28,38 @@ export function BookingManager() {
       const bookingsQuery = query(collectionGroup(firestore, 'bookings'), where('status', '==', 'pending'));
       const querySnapshot = await getDocs(bookingsQuery);
       
-      const bookingsData: BookingWithUser[] = [];
-      const userCache = new Map<string, UserProfile>();
-
-      for (const bookingDoc of querySnapshot.docs) {
-        // The booking document's path is /users/{userId}/bookings/{bookingId}
-        // We need to get the parent's parent to get the userId
+      const bookingsData = await Promise.all(querySnapshot.docs.map(async (bookingDoc) => {
+        const bookingData = bookingDoc.data() as Omit<Booking, 'id'>;
+        const bookingId = bookingDoc.id;
+        
+        // Correctly extract userId from the document path
         const userId = bookingDoc.ref.parent.parent?.id;
 
         if (!userId) {
-          console.warn('Could not determine userId for booking:', bookingDoc.id);
-          continue; 
+          console.warn('Could not determine userId for booking:', bookingId);
+          return null;
         }
 
-        const booking = { id: bookingDoc.id, userId, ...bookingDoc.data() } as Booking;
-        let userProfile: UserProfile | undefined = userCache.get(booking.userId);
-
-        if (!userProfile) {
-            const userDocRef: DocumentReference<DocumentData> = doc(firestore, 'users', booking.userId);
-            const userDocSnap: DocumentSnapshot<DocumentData> = await getDoc(userDocRef);
+        const booking: Booking = { id: bookingId, ...bookingData, userId: userId };
+        
+        let userProfile: UserProfile | undefined = undefined;
+        try {
+            const userDocRef = doc(firestore, 'users', userId);
+            const userDocSnap = await getDoc(userDocRef);
             
             if (userDocSnap.exists()) {
                 userProfile = { id: userDocSnap.id, ...userDocSnap.data() } as UserProfile;
-                userCache.set(booking.userId, userProfile);
             }
+        } catch (userError) {
+            console.error(`Failed to fetch profile for user ${userId}:`, userError);
         }
-        
-        bookingsData.push({ ...booking, user: userProfile });
-      }
 
-      setBookings(bookingsData);
+        return { ...booking, user: userProfile } as BookingWithUser;
+      }));
+
+      // Filter out any null values that resulted from missing userIds
+      setBookings(bookingsData.filter((b): b is BookingWithUser => b !== null));
+
     } catch (error: any) {
       toast({ title: 'Error fetching bookings', description: error.message, variant: 'destructive' });
       console.error("Error fetching bookings:", error);
