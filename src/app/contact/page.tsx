@@ -1,3 +1,4 @@
+
 import { Mail, MapPin, Phone } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GoogleMapEmbed } from "@/components/google-map-embed";
@@ -13,8 +14,8 @@ export default function ContactPage() {
     {
       icon: Phone,
       title: "Phone Number",
-      value: "(123) 456-7890",
-      href: "tel:+1234567890",
+      value: "+91 7981304029",
+      href: "tel:+917981304029",
     },
     {
       icon: Mail,
