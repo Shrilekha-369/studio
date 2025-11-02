@@ -41,6 +41,7 @@ export default function SignUpPage() {
       const userDocRef = doc(firestore, 'users', user.uid);
       getDoc(userDocRef).then(docSnap => {
         if (!docSnap.exists()) {
+          // This logic will now primarily handle users signing up with Google for the first time
           const nameParts = user.displayName?.split(' ') || [];
           const profile: UserProfile = {
             id: user.uid,
@@ -50,6 +51,7 @@ export default function SignUpPage() {
           };
           setDocumentNonBlocking(userDocRef, profile, { merge: false });
         }
+        // Redirect after checking/creating profile
         router.push('/my-profile');
       });
     }
@@ -91,6 +93,7 @@ export default function SignUpPage() {
       };
 
       const userDocRef = doc(firestore, 'users', firebaseUser.uid);
+      // We explicitly set the document here for email sign-up
       setDocumentNonBlocking(userDocRef, userProfile, { merge: false });
 
       toast({
@@ -98,7 +101,7 @@ export default function SignUpPage() {
         description: "Welcome! You've been signed up successfully.",
       });
 
-      // The useEffect will handle the redirect
+      // The useEffect will handle the redirect after the user state is updated.
     } catch (error: any) {
       toast({
         title: 'Sign Up Failed',
