@@ -19,6 +19,10 @@ export function BookingManager() {
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchBookings = async () => {
+    if (!firestore) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
       const bookingsQuery = query(collectionGroup(firestore, 'bookings'), where('status', '==', 'pending'));
@@ -47,15 +51,20 @@ export function BookingManager() {
       setBookings(bookingsData);
     } catch (error: any) {
       toast({ title: 'Error fetching bookings', description: error.message, variant: 'destructive' });
+      console.error("Error fetching bookings:", error);
     }
     setIsLoading(false);
   };
   
   useEffect(() => {
-    fetchBookings();
-  }, []);
+    if(firestore) {
+      fetchBookings();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firestore]);
 
   const handleUpdateStatus = (booking: Booking, newStatus: 'approved' | 'rejected') => {
+    if (!firestore) return;
     const bookingDocRef = doc(firestore, 'users', booking.userId, 'bookings', booking.id);
     updateDocumentNonBlocking(bookingDocRef, { status: newStatus });
     
@@ -95,8 +104,9 @@ export function BookingManager() {
             {bookings.map((booking) => (
               <TableRow key={booking.id}>
                 <TableCell>
-                    <div>{booking.user?.firstName} {booking.user?.lastName}</div>
+                    <div className="font-medium">{booking.user?.firstName} {booking.user?.lastName}</div>
                     <div className="text-xs text-muted-foreground">{booking.user?.email}</div>
+                    <div className="text-xs text-muted-foreground">{booking.user?.phone}</div>
                 </TableCell>
                 <TableCell>{booking.className}</TableCell>
                 <TableCell>{new Date(booking.bookingDate).toLocaleDateString()}</TableCell>
