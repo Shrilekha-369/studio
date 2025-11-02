@@ -18,9 +18,10 @@
           "type": "string",
           "description": "Name of the instructor leading the class."
         },
-        "dayOfWeek": {
+        "classDate": {
           "type": "string",
-          "description": "Day of the week the class is held (e.g., Monday, Tuesday)."
+          "description": "The date the class is held.",
+          "format": "date"
         },
         "startTime": {
           "type": "string",
@@ -39,7 +40,7 @@
         "id",
         "className",
         "instructor",
-        "dayOfWeek",
+        "classDate",
         "startTime",
         "durationMinutes",
         "capacity"

@@ -2,7 +2,7 @@ export type ClassSchedule = {
   id: string;
   className: string;
   instructor: string;
-  dayOfWeek: string;
+  classDate: string; // Changed from dayOfWeek to classDate
   startTime: string;
   durationMinutes: number;
   capacity: number;
@@ -20,7 +20,8 @@ export type Booking = {
   // Denormalized fields for easier display
   className?: string;
   classStartTime?: string;
-  classDay?: string;
+  classDay?: string; // This might be stale now, but leaving for old bookings
+  classDate?: string;
 };
 
 export type UserProfile = {

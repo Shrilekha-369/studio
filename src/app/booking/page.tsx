@@ -1,7 +1,7 @@
 'use client';
 
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 import {
   Table,
   TableBody,
@@ -15,6 +15,7 @@ import { BookingModal } from '@/components/booking-modal';
 import { Dumbbell, HeartPulse, Bike, Activity, LucideProps } from 'lucide-react';
 import type { ClassSchedule } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { format } from 'date-fns';
 
 const getLevel = (className: string) => {
   if (className.toLowerCase().includes('hiit')) return 'Advanced';
@@ -22,13 +23,14 @@ const getLevel = (className: string) => {
   return 'Intermediate';
 };
 
-const formatTime = (day: string, time: string) => {
-  const [hour, minute] = time.split(':');
-  const hourNum = parseInt(hour, 10);
-  const ampm = hourNum >= 12 ? 'PM' : 'AM';
-  const formattedHour = hourNum % 12 === 0 ? 12 : hourNum % 12;
-  return `${day.substring(0, 3)} ${formattedHour}:${minute} ${ampm}`;
-};
+const formatTime = (date: string, time: string) => {
+    const [hour, minute] = time.split(':');
+    const hourNum = parseInt(hour, 10);
+    const ampm = hourNum >= 12 ? 'PM' : 'AM';
+    const formattedHour = hourNum % 12 === 0 ? 12 : hourNum % 12;
+    const formattedDate = format(new Date(date), "EEE, MMM d");
+    return `${formattedDate} ${formattedHour}:${minute} ${ampm}`;
+  };
 
 const iconMap: { [key: string]: React.ElementType<LucideProps> } = {
   Dumbbell,
@@ -52,9 +54,11 @@ const getIcon = (className: string): React.ElementType<LucideProps> => {
 
 export default function BookingPage() {
   const firestore = useFirestore();
+  const today = format(new Date(), 'yyyy-MM-dd');
+
   const schedulesQuery = useMemoFirebase(
-    () => query(collection(firestore, 'classSchedules'), orderBy('startTime')),
-    [firestore]
+    () => query(collection(firestore, 'classSchedules'), where('classDate', '>=', today), orderBy('classDate'), orderBy('startTime')),
+    [firestore, today]
   );
   const { data: schedule, isLoading } = useCollection<ClassSchedule>(schedulesQuery);
   
@@ -109,7 +113,7 @@ export default function BookingPage() {
                       </div>
                     </TableCell>
                     <TableCell>{classInfo.instructor}</TableCell>
-                    <TableCell>{formatTime(classInfo.dayOfWeek, classInfo.startTime)}</TableCell>
+                    <TableCell>{formatTime(classInfo.classDate, classInfo.startTime)}</TableCell>
                     <TableCell>
                       <Badge variant={
                         level === 'Beginner' ? 'secondary' :

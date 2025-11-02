@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
 
 export default function MyProfilePage() {
   const { user, isUserLoading } = useUser();
@@ -60,6 +61,15 @@ export default function MyProfilePage() {
     });
   }
 
+  const formatClassTime = (booking: Booking) => {
+    if (booking.classDate && booking.classStartTime) {
+        return `${booking.className} on ${format(new Date(booking.classDate), 'PPP')} at ${booking.classStartTime}`;
+    }
+    // Fallback for older bookings
+    return `${booking.className} on ${booking.classDay} at ${booking.classStartTime}`;
+  }
+
+
   return (
     <div className="container max-w-screen-lg mx-auto py-12 px-4 md:px-6">
       <div className="mb-8">
@@ -91,7 +101,7 @@ export default function MyProfilePage() {
                     <TableBody>
                         {bookings.map(booking => (
                             <TableRow key={booking.id}>
-                                <TableCell className="font-medium">{booking.className} on {booking.classDay} at {booking.classStartTime}</TableCell>
+                                <TableCell className="font-medium">{formatClassTime(booking)}</TableCell>
                                 <TableCell>{formatDate(booking.bookingDate)}</TableCell>
                                 <TableCell>
                                     <Badge variant={getStatusVariant(booking.status)} className="capitalize">

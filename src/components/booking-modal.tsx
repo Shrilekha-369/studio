@@ -22,6 +22,7 @@ import { collection, doc } from 'firebase/firestore';
 import type { UserProfile, Booking } from '@/lib/types';
 import Link from "next/link";
 import { Skeleton } from "./ui/skeleton";
+import { format } from 'date-fns';
 
 
 export function BookingModal({ classInfo }: { classInfo: ClassSchedule }) {
@@ -68,7 +69,7 @@ export function BookingModal({ classInfo }: { classInfo: ClassSchedule }) {
         status: 'pending',
         // Denormalize for easier display in admin and user profile
         className: classInfo.className,
-        classDay: classInfo.dayOfWeek,
+        classDate: classInfo.classDate,
         classStartTime: classInfo.startTime,
     };
 
@@ -83,7 +84,7 @@ export function BookingModal({ classInfo }: { classInfo: ClassSchedule }) {
     setOpen(false);
   };
 
-  const time = `${classInfo.dayOfWeek.substring(0,3)} ${classInfo.startTime}`;
+  const time = `${format(new Date(classInfo.classDate), 'MMM d')} at ${classInfo.startTime}`;
 
   const renderContent = () => {
     // Show skeleton while auth state or profile is loading

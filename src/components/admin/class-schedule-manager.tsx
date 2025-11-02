@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, query, orderBy } from 'firebase/firestore';
 import type { ClassSchedule } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
@@ -10,15 +10,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PlusCircle, Edit, Trash2 } from 'lucide-react';
-import { setDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PlusCircle, Edit, Trash2, CalendarIcon } from 'lucide-react';
+import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
-const ClassScheduleForm = ({ schedule, onSave, closeDialog }: { schedule?: ClassSchedule; onSave: (data: Omit<ClassSchedule, 'id'>) => void; closeDialog: () => void }) => {
-  const [formData, setFormData] = useState<Omit<ClassSchedule, 'id'>>({
+const ClassScheduleForm = ({ schedule, onSave, closeDialog }: { schedule?: ClassSchedule; onSave: (data: Omit<ClassSchedule, 'id'> | Partial<ClassSchedule>) => void; closeDialog: () => void }) => {
+  const [formData, setFormData] = useState({
     className: schedule?.className || '',
     instructor: schedule?.instructor || '',
-    dayOfWeek: schedule?.dayOfWeek || 'Monday',
+    classDate: schedule?.classDate ? new Date(schedule.classDate) : new Date(),
     startTime: schedule?.startTime || '',
     durationMinutes: schedule?.durationMinutes || 60,
     capacity: schedule?.capacity || 10,
@@ -29,16 +32,20 @@ const ClassScheduleForm = ({ schedule, onSave, closeDialog }: { schedule?: Class
     setFormData(prev => ({ ...prev, [name]: type === 'number' ? Number(value) : value }));
   };
 
-  const handleDayChange = (value: string) => {
-    setFormData(prev => ({ ...prev, dayOfWeek: value }));
+  const handleDateChange = (date?: Date) => {
+    if (date) {
+      setFormData(prev => ({ ...prev, classDate: date }));
+    }
   };
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    const dataToSave = {
+      ...formData,
+      classDate: format(formData.classDate, 'yyyy-MM-dd'),
+    };
+    onSave(dataToSave);
   };
-
-  const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
   return (
     <form onSubmit={handleSubmit}>
@@ -55,17 +62,29 @@ const ClassScheduleForm = ({ schedule, onSave, closeDialog }: { schedule?: Class
           <Input id="instructor" name="instructor" value={formData.instructor} onChange={handleChange} className="col-span-3" required />
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="dayOfWeek" className="text-right">Day</Label>
-           <Select name="dayOfWeek" value={formData.dayOfWeek} onValueChange={handleDayChange}>
-            <SelectTrigger className="col-span-3">
-              <SelectValue placeholder="Select a day" />
-            </SelectTrigger>
-            <SelectContent>
-              {daysOfWeek.map(day => (
-                <SelectItem key={day} value={day}>{day}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Label htmlFor="classDate" className="text-right">Date</Label>
+            <Popover>
+                <PopoverTrigger asChild>
+                <Button
+                    variant={"outline"}
+                    className={cn(
+                    "col-span-3 justify-start text-left font-normal",
+                    !formData.classDate && "text-muted-foreground"
+                    )}
+                >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formData.classDate ? format(formData.classDate, "PPP") : <span>Pick a date</span>}
+                </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                <Calendar
+                    mode="single"
+                    selected={formData.classDate}
+                    onSelect={handleDateChange}
+                    initialFocus
+                />
+                </PopoverContent>
+            </Popover>
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="startTime" className="text-right">Start Time</Label>
@@ -94,10 +113,10 @@ export function ClassScheduleManager() {
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<ClassSchedule | undefined>(undefined);
 
-  const schedulesRef = useMemoFirebase(() => collection(firestore, 'classSchedules'), [firestore]);
-  const { data: schedules, isLoading } = useCollection<ClassSchedule>(schedulesRef);
+  const schedulesQuery = useMemoFirebase(() => query(collection(firestore, 'classSchedules'), orderBy('classDate', 'desc')), [firestore]);
+  const { data: schedules, isLoading } = useCollection<ClassSchedule>(schedulesQuery);
 
-  const handleSave = async (data: Omit<ClassSchedule, 'id'>) => {
+  const handleSave = async (data: Omit<ClassSchedule, 'id'> | Partial<ClassSchedule>) => {
     try {
       if (editingSchedule) {
         const docRef = doc(firestore, 'classSchedules', editingSchedule.id);
@@ -163,7 +182,7 @@ export function ClassScheduleManager() {
             <TableRow key={schedule.id}>
               <TableCell>{schedule.className}</TableCell>
               <TableCell>{schedule.instructor}</TableCell>
-              <TableCell>{schedule.dayOfWeek} at {schedule.startTime}</TableCell>
+              <TableCell>{format(new Date(schedule.classDate), 'PPP')} at {schedule.startTime}</TableCell>
               <TableCell className="space-x-2">
                 <Button variant="ghost" size="icon" onClick={() => openDialog(schedule)}>
                   <Edit className="h-4 w-4" />
