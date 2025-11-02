@@ -122,7 +122,7 @@ export function GalleryManager() {
   const galleryItemsRef = useMemoFirebase(() => collection(firestore, 'galleryItems'), [firestore]);
   const { data: galleryItems, isLoading } = useCollection<GalleryItem>(galleryItemsRef);
 
-  const handleSave = (data: Partial<GalleryItem>, file?: File) => {
+  const handleSave = async (data: Partial<GalleryItem>, file?: File) => {
     if (!firestore || !storage) return;
 
     closeDialog();
@@ -131,20 +131,15 @@ export function GalleryManager() {
     if (!file) {
       if (editingItem) {
         const docRef = doc(firestore, 'galleryItems', editingItem.id);
-        updateDoc(docRef, data)
-          .then(() => {
-            toast({ title: 'Success', description: 'Gallery item updated.' });
-          })
-          .catch((error) => {
-            toast({ title: 'Error', description: error.message, variant: 'destructive' });
-          });
+        await updateDoc(docRef, data);
+        toast({ title: 'Success', description: 'Gallery item updated.' });
       }
       return;
     }
 
     // If a file is present, start the upload process.
     const storageRef = ref(storage, `gallery/${Date.now()}_${file.name}`);
-    const uploadTask: UploadTask = uploadBytesResumable(storageRef, file);
+    const uploadTask = uploadBytesResumable(storageRef, file);
 
     uploadTask.on('state_changed',
       (snapshot) => {
@@ -156,22 +151,23 @@ export function GalleryManager() {
         toast({ title: 'Upload Failed', description: error.message, variant: 'destructive' });
         setUploadProgress(null);
       },
-      () => {
-        getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-          const dataToSave = { ...data, imageUrl: downloadURL };
-
-          const dbPromise = editingItem
-            ? updateDoc(doc(firestore, 'galleryItems', editingItem.id), dataToSave)
-            : addDoc(collection(firestore, 'galleryItems'), dataToSave);
-          
-          dbPromise.then(() => {
-            toast({ title: 'Success', description: `Gallery item ${editingItem ? 'updated' : 'added'}.` });
-          }).catch((error) => {
-             toast({ title: 'Database Error', description: error.message, variant: 'destructive' });
-          }).finally(() => {
-             setTimeout(() => setUploadProgress(null), 2000);
-          });
-        });
+      async () => {
+        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+        const dataToSave = { ...data, imageUrl: downloadURL };
+        
+        try {
+          if (editingItem) {
+            await updateDoc(doc(firestore, 'galleryItems', editingItem.id), dataToSave);
+            toast({ title: 'Success', description: 'Gallery item updated.' });
+          } else {
+            await addDoc(collection(firestore, 'galleryItems'), dataToSave);
+            toast({ title: 'Success', description: 'Gallery item added.' });
+          }
+        } catch (error: any) {
+          toast({ title: 'Database Error', description: error.message, variant: 'destructive' });
+        } finally {
+          setTimeout(() => setUploadProgress(null), 2000);
+        }
       }
     );
   };
@@ -259,5 +255,6 @@ export function GalleryManager() {
     </div>
   );
 }
+    
 
     
