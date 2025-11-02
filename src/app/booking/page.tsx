@@ -17,19 +17,25 @@ export type ClassInfo = {
   duration: string;
   level: 'Beginner' | 'Intermediate' | 'Advanced';
   spots: number;
-  icon: React.ElementType;
+  icon: string;
 };
 
 const schedule: ClassInfo[] = [
-  { name: 'Sunrise Yoga', instructor: 'Anna', time: 'Mon 7:00 AM', duration: '60 min', level: 'Beginner', spots: 8, icon: Dumbbell },
-  { name: 'HIIT Power Hour', instructor: 'Mark', time: 'Mon 6:00 PM', duration: '60 min', level: 'Advanced', spots: 3, icon: HeartPulse },
-  { name: 'Rhythm Spin', instructor: 'Chloe', time: 'Tue 5:30 PM', duration: '45 min', level: 'Intermediate', spots: 0, icon: Bike },
-  { name: 'Full Body Strength', instructor: 'David', time: 'Wed 7:00 AM', duration: '60 min', level: 'Intermediate', spots: 5, icon: Dumbbell },
-  { name: 'Restorative Flow', instructor: 'Anna', time: 'Wed 6:30 PM', duration: '75 min', level: 'Beginner', spots: 10, icon: Dumbbell },
-  { name: 'Cycle & Core', instructor: 'Chloe', time: 'Thu 6:00 PM', duration: '45 min', level: 'Intermediate', spots: 2, icon: Bike },
-  { name: 'Weekend Warrior HIIT', instructor: 'Mark', time: 'Sat 9:00 AM', duration: '60 min', level: 'Advanced', spots: 6, icon: HeartPulse },
-  { name: 'Sunday Zen Yoga', instructor: 'Anna', time: 'Sun 10:00 AM', duration: '75 min', level: 'Beginner', spots: 12, icon: Dumbbell },
+  { name: 'Sunrise Yoga', instructor: 'Anna', time: 'Mon 7:00 AM', duration: '60 min', level: 'Beginner', spots: 8, icon: 'Dumbbell' },
+  { name: 'HIIT Power Hour', instructor: 'Mark', time: 'Mon 6:00 PM', duration: '60 min', level: 'Advanced', spots: 3, icon: 'HeartPulse' },
+  { name: 'Rhythm Spin', instructor: 'Chloe', time: 'Tue 5:30 PM', duration: '45 min', level: 'Intermediate', spots: 0, icon: 'Bike' },
+  { name: 'Full Body Strength', instructor: 'David', time: 'Wed 7:00 AM', duration: '60 min', level: 'Intermediate', spots: 5, icon: 'Dumbbell' },
+  { name: 'Restorative Flow', instructor: 'Anna', time: 'Wed 6:30 PM', duration: '75 min', level: 'Beginner', spots: 10, icon: 'Dumbbell' },
+  { name: 'Cycle & Core', instructor: 'Chloe', time: 'Thu 6:00 PM', duration: '45 min', level: 'Intermediate', spots: 2, icon: 'Bike' },
+  { name: 'Weekend Warrior HIIT', instructor: 'Mark', time: 'Sat 9:00 AM', duration: '60 min', level: 'Advanced', spots: 6, icon: 'HeartPulse' },
+  { name: 'Sunday Zen Yoga', instructor: 'Anna', time: 'Sun 10:00 AM', duration: '75 min', level: 'Beginner', spots: 12, icon: 'Dumbbell' },
 ];
+
+const iconMap: { [key: string]: React.ElementType } = {
+  Dumbbell,
+  HeartPulse,
+  Bike
+};
 
 export default function BookingPage() {
   return (
@@ -52,30 +58,33 @@ export default function BookingPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {schedule.map((classInfo) => (
-              <TableRow key={classInfo.name + classInfo.time}>
-                <TableCell className="font-medium">
-                  <div className="flex items-center gap-3">
-                    <classInfo.icon className="h-5 w-5 text-primary hidden sm:inline-block" />
-                    {classInfo.name}
-                  </div>
-                </TableCell>
-                <TableCell>{classInfo.instructor}</TableCell>
-                <TableCell>{classInfo.time}</TableCell>
-                <TableCell>
-                  <Badge variant={
-                    classInfo.level === 'Beginner' ? 'secondary' :
-                    classInfo.level === 'Intermediate' ? 'default' : 'destructive'
-                  } className="bg-primary/20 text-primary-foreground">
-                    {classInfo.level}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-center">{classInfo.spots}</TableCell>
-                <TableCell className="text-right">
-                  <BookingModal classInfo={classInfo} />
-                </TableCell>
-              </TableRow>
-            ))}
+            {schedule.map((classInfo) => {
+              const IconComponent = iconMap[classInfo.icon];
+              return (
+                <TableRow key={classInfo.name + classInfo.time}>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-3">
+                      {IconComponent && <IconComponent className="h-5 w-5 text-primary hidden sm:inline-block" />}
+                      {classInfo.name}
+                    </div>
+                  </TableCell>
+                  <TableCell>{classInfo.instructor}</TableCell>
+                  <TableCell>{classInfo.time}</TableCell>
+                  <TableCell>
+                    <Badge variant={
+                      classInfo.level === 'Beginner' ? 'secondary' :
+                      classInfo.level === 'Intermediate' ? 'default' : 'destructive'
+                    } className="bg-primary/20 text-primary-foreground">
+                      {classInfo.level}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-center">{classInfo.spots}</TableCell>
+                  <TableCell className="text-right">
+                    <BookingModal classInfo={classInfo} />
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
