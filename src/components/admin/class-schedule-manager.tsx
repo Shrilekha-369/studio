@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, query, orderBy } from 'firebase/firestore';
+import { collection, doc, query, orderBy, deleteDoc } from 'firebase/firestore';
 import type { ClassSchedule } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PlusCircle, Edit, Trash2, CalendarIcon } from 'lucide-react';
-import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
@@ -151,11 +151,20 @@ export function ClassScheduleManager() {
     }
   };
   
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
       if(window.confirm('Are you sure you want to delete this class?')) {
-          const docRef = doc(firestore, 'classSchedules', id);
-          deleteDocumentNonBlocking(docRef);
-          toast({ title: 'Success', description: 'Class schedule deleted.' });
+        const docRef = doc(firestore, 'classSchedules', id);
+        try {
+            await deleteDoc(docRef);
+            toast({ title: 'Success', description: 'Class schedule deleted.' });
+        } catch (error: any) {
+             toast({ 
+                title: 'Deletion Failed', 
+                description: error.message || "Could not delete class schedule.",
+                variant: 'destructive'
+            });
+            console.error("Error deleting document: ", error);
+        }
       }
   }
 
