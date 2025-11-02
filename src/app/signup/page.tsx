@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -37,35 +38,43 @@ export default function SignUpPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    // If the user is already logged in (and not a guest), redirect them away.
     if (!isUserLoading && user && !user.isAnonymous) {
-      const userDocRef = doc(firestore, 'users', user.uid);
-      
-      const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
-        if (docSnap.exists()) {
-          // Profile exists, we can redirect.
-          router.push('/my-profile');
-          unsubscribe(); // Stop listening once we have what we need.
-        } else {
-          // This logic now primarily handles first-time Google sign-ins.
-          // For email sign-up, the profile is created in handleEmailSignUp.
-          if (user.providerData.some(p => p.providerId === 'google.com')) {
-              const nameParts = user.displayName?.split(' ') || [];
-              const profile: UserProfile = {
-                id: user.uid,
-                firstName: nameParts[0] || '',
-                lastName: nameParts.slice(1).join(' ') || '',
-                email: user.email!,
-              };
-              setDocumentNonBlocking(userDocRef, profile, { merge: false });
-              // The redirect will happen on the next snapshot update.
-          }
-        }
-      });
-      
-      return () => unsubscribe();
+      router.push('/my-profile');
     }
-  }, [user, isUserLoading, firestore, router]);
+  }, [user, isUserLoading, router]);
 
+
+  const handleSuccessfulSignUp = (userCredential: any) => {
+    const firebaseUser = userCredential.user;
+    let profileData: UserProfile;
+
+    if (firebaseUser.providerData.some(p => p.providerId === 'google.com')) {
+        // Handle Google Sign-Up
+        const nameParts = firebaseUser.displayName?.split(' ') || [];
+        profileData = {
+            id: firebaseUser.uid,
+            firstName: nameParts[0] || '',
+            lastName: nameParts.slice(1).join(' ') || '',
+            email: firebaseUser.email!,
+        };
+    } else {
+        // Handle Email Sign-Up
+        updateProfile(firebaseUser, {
+            displayName: `${firstName} ${lastName}`.trim(),
+        });
+        profileData = {
+            id: firebaseUser.uid,
+            firstName,
+            lastName,
+            email: firebaseUser.email!,
+        };
+    }
+    
+    const userDocRef = doc(firestore, 'users', firebaseUser.uid);
+    setDocumentNonBlocking(userDocRef, profileData, { merge: false });
+    // Redirection is handled by the useEffect hook, which will run after the user state updates.
+};
 
   if (isUserLoading || (user && !user.isAnonymous)) {
     return (
@@ -88,20 +97,7 @@ export default function SignUpPage() {
     setIsLoading(true);
 
     initiateEmailSignUp(auth, email, password)
-      .then((userCredential) => {
-          const firebaseUser = userCredential.user;
-          updateProfile(firebaseUser, {
-              displayName: `${firstName} ${lastName}`.trim(),
-          });
-          const userProfile: UserProfile = {
-              id: firebaseUser.uid,
-              firstName,
-              lastName,
-              email: firebaseUser.email!,
-          };
-          const userDocRef = doc(firestore, 'users', firebaseUser.uid);
-          setDocumentNonBlocking(userDocRef, userProfile, { merge: false });
-      })
+      .then(handleSuccessfulSignUp)
       .catch((error: any) => {
         toast({
           title: 'Sign Up Failed',
@@ -117,6 +113,7 @@ export default function SignUpPage() {
   const handleGoogleSignUp = () => {
     setIsLoading(true);
     initiateGoogleSignIn(auth)
+      .then(handleSuccessfulSignUp)
       .catch((error: any) => {
         if (error.code !== 'auth/popup-closed-by-user') {
             toast({
