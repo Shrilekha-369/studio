@@ -179,8 +179,7 @@ export function ClassScheduleManager() {
         const docRef = doc(firestore, 'classSchedules', id);
         await deleteDoc(docRef);
         toast({ title: 'Success', description: 'Class schedule deleted.' });
-        // Manually update the local state to reflect the deletion
-        setSchedules(prevSchedules => prevSchedules.filter(s => s.id !== id));
+        setSchedules(schedules.filter((s) => s.id !== id));
       } catch (error: any) {
         toast({
           title: 'Deletion Failed',
@@ -258,5 +257,3 @@ export function ClassScheduleManager() {
     </div>
   );
 }
-
-    
