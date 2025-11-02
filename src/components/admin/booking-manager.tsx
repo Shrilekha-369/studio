@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useFirestore } from '@/firebase';
-import { collectionGroup, query, where, getDocs, doc, DocumentSnapshot, getDoc } from 'firebase/firestore';
+import { collectionGroup, query, where, getDocs, doc, DocumentSnapshot, getDoc, DocumentData } from 'firebase/firestore';
 import type { Booking, UserProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -37,10 +37,10 @@ export function BookingManager() {
 
         if (!userProfile) {
             const userDocRef = doc(firestore, 'users', booking.userId);
-            const userDocSnap: DocumentSnapshot<UserProfile> = await getDoc(userDocRef) as DocumentSnapshot<UserProfile>;
+            const userDocSnap: DocumentSnapshot<DocumentData> = await getDoc(userDocRef);
             
             if (userDocSnap.exists()) {
-                userProfile = { id: userDocSnap.id, ...userDocSnap.data()};
+                userProfile = { id: userDocSnap.id, ...userDocSnap.data() } as UserProfile;
                 userCache.set(booking.userId, userProfile);
             }
         }
