@@ -56,12 +56,12 @@ service cloud.firestore {
 
       /**
        * @description Controls access to a user's bookings subcollection.
-       * @allow (get, list): The user can read their own bookings. Admins can also read any user's bookings.
+       * @allow (get, list): The user can read their own bookings.
        * @allow (create): The user can create a booking for themselves.
-       * @allow (update, delete): The user can update or delete their own booking.
+       * @allow (update, delete): The user can update or delete their own booking. Admins can also update/delete.
        */
       match /bookings/{bookingId} {
-        allow get, list: if isOwner(userId) || isAdmin();
+        allow get, list: if isOwner(userId);
         allow create: if isOwner(userId) && request.resource.data.userId == userId;
         allow update, delete: if isOwner(userId) || isAdmin();
       }
