@@ -1,24 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-import { useFirestore, useMemoFirebase } from '@/firebase';
-import { collectionGroup, query, where, getDocs, doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { useState, useEffect } from 'react';
+import { useFirestore } from '@/firebase';
+import { collectionGroup, query, where, getDocs, doc, DocumentSnapshot, getDoc } from 'firebase/firestore';
 import type { Booking, UserProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Check, X, RefreshCw } from 'lucide-react';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-
 
 type BookingWithUser = Booking & { user?: UserProfile };
 
@@ -35,8 +25,6 @@ export function BookingManager() {
       const querySnapshot = await getDocs(bookingsQuery);
       
       const bookingsData: BookingWithUser[] = [];
-      
-      // Use a map to fetch each user only once
       const userCache = new Map<string, UserProfile>();
 
       for (const bookingDoc of querySnapshot.docs) {
@@ -45,11 +33,10 @@ export function BookingManager() {
 
         if (!userProfile) {
             const userDocRef = doc(firestore, 'users', booking.userId);
-            const userDoc = await getDocs(query(collectionGroup(firestore, 'users'), where('id', '==', booking.userId)));
+            const userDocSnap: DocumentSnapshot<UserProfile> = await getDoc(userDocRef) as DocumentSnapshot<UserProfile>;
             
-            if (!userDoc.empty) {
-                const userDocData = userDoc.docs[0].data() as UserProfile;
-                userProfile = { id: userDoc.docs[0].id, ...userDocData};
+            if (userDocSnap.exists()) {
+                userProfile = { id: userDocSnap.id, ...userDocSnap.data()};
                 userCache.set(booking.userId, userProfile);
             }
         }
@@ -64,9 +51,9 @@ export function BookingManager() {
     setIsLoading(false);
   };
   
-  useState(() => {
+  useEffect(() => {
     fetchBookings();
-  });
+  }, []);
 
   const handleUpdateStatus = (booking: Booking, newStatus: 'approved' | 'rejected') => {
     const bookingDocRef = doc(firestore, 'users', booking.userId, 'bookings', booking.id);
