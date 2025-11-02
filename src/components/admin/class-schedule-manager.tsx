@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const ClassScheduleForm = ({ schedule, onSave, closeDialog }: { schedule?: ClassSchedule; onSave: (data: Omit<ClassSchedule, 'id'> | Partial<ClassSchedule>) => void; closeDialog: () => void }) => {
   const [formData, setFormData] = useState({
@@ -25,6 +26,7 @@ const ClassScheduleForm = ({ schedule, onSave, closeDialog }: { schedule?: Class
     startTime: schedule?.startTime || '',
     durationMinutes: schedule?.durationMinutes || 60,
     capacity: schedule?.capacity || 10,
+    difficulty: schedule?.difficulty || 'Intermediate',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -36,6 +38,10 @@ const ClassScheduleForm = ({ schedule, onSave, closeDialog }: { schedule?: Class
     if (date) {
       setFormData(prev => ({ ...prev, classDate: date }));
     }
+  };
+
+  const handleDifficultyChange = (value: 'Beginner' | 'Intermediate' | 'Advanced') => {
+    setFormData(prev => ({ ...prev, difficulty: value }));
   };
   
   const handleSubmit = (e: React.FormEvent) => {
@@ -89,6 +95,19 @@ const ClassScheduleForm = ({ schedule, onSave, closeDialog }: { schedule?: Class
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="startTime" className="text-right">Start Time</Label>
           <Input id="startTime" name="startTime" type="time" value={formData.startTime} onChange={handleChange} className="col-span-3" required />
+        </div>
+        <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="difficulty" className="text-right">Difficulty</Label>
+            <Select name="difficulty" value={formData.difficulty} onValueChange={handleDifficultyChange}>
+                <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Select a difficulty" />
+                </SelectTrigger>
+                <SelectContent>
+                <SelectItem value="Beginner">Beginner</SelectItem>
+                <SelectItem value="Intermediate">Intermediate</SelectItem>
+                <SelectItem value="Advanced">Advanced</SelectItem>
+                </SelectContent>
+            </Select>
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="durationMinutes" className="text-right">Duration (min)</Label>

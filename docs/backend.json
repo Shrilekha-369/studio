@@ -34,6 +34,11 @@
         "capacity": {
           "type": "number",
           "description": "Maximum number of participants allowed in the class."
+        },
+        "difficulty": {
+          "type": "string",
+          "description": "The difficulty level of the class.",
+          "enum": ["Beginner", "Intermediate", "Advanced"]
         }
       },
       "required": [
@@ -43,7 +48,8 @@
         "classDate",
         "startTime",
         "durationMinutes",
-        "capacity"
+        "capacity",
+        "difficulty"
       ]
     },
     "Booking": {

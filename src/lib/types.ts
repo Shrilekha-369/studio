@@ -6,6 +6,7 @@ export type ClassSchedule = {
   startTime: string;
   durationMinutes: number;
   capacity: number;
+  difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
   spotsLeft?: number; // Made optional as it's UI-specific
   icon?: string; // Made optional
 };

@@ -19,12 +19,6 @@ import type { ClassSchedule } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, startOfToday } from 'date-fns';
 
-const getLevel = (className: string) => {
-  if (className.toLowerCase().includes('hiit')) return 'Advanced';
-  if (className.toLowerCase().includes('yoga') || className.toLowerCase().includes('flow')) return 'Beginner';
-  return 'Intermediate';
-};
-
 const formatTime = (time: string) => {
     const [hour, minute] = time.split(':');
     const hourNum = parseInt(hour, 10);
@@ -136,7 +130,7 @@ export default function BookingPage() {
             ) : schedule.length > 0 ? (
               schedule.map((classInfo) => {
                 const IconComponent = getIcon(classInfo.className);
-                const level = getLevel(classInfo.className);
+                const level = classInfo.difficulty;
                 return (
                   <TableRow key={classInfo.id}>
                     <TableCell className="font-medium">
