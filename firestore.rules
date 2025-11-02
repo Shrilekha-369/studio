@@ -2,18 +2,18 @@
  * @file Firestore Security Rules
  * @description This ruleset enforces a strict user-ownership model for user profiles and bookings,
  * and allows public read access to class schedules and gallery items. Write access to class schedules
- * and gallery items is not defined in this initial prototyping phase.
+ * and gallery items is restricted to admin users.
  *
  * Data Structure:
- * - /classSchedules/{classScheduleId}: Stores class schedule information. Publicly readable, write access is undefined in this version.
+ * - /classSchedules/{classScheduleId}: Stores class schedule information. Publicly readable, write access is restricted to admins.
  * - /users/{userId}: Stores user profile information. Only accessible by the user themselves.
  * - /users/{userId}/bookings/{bookingId}: Stores booking information for a specific user. Only accessible by the user themselves.
- * - /galleryItems/{galleryItemId}: Stores gallery items (images, descriptions). Publicly readable, write access is undefined in this version.
+ * - /galleryItems/{galleryItemId}: Stores gallery items (images, descriptions). Publicly readable, write access is restricted to admins.
  *
  * Key Security Decisions:
  * - User listing is disallowed.
  * - Class schedules and gallery items are publicly readable.
- * - Write access to class schedules and gallery items is not defined.
+ * - Write access to class schedules and gallery items is restricted to users with an `admin` custom claim.
  * - Default security posture for ambiguous relationships is strict owner-only access.
  *
  * Denormalization for Authorization:
@@ -32,12 +32,12 @@ service cloud.firestore {
      * @description Controls access to class schedule information.
      * @path /classSchedules/{classScheduleId}
      * @allow (get, list): Any user can read class schedules.
-     * @deny (create, update, delete): No user can create, update, or delete class schedules in this prototype. Write access is not yet defined.
-     * @principle Allows public read access to class schedules.
+     * @allow (create, update, delete): Admin users can manage class schedules.
+     * @principle Allows public read access to class schedules, and admin-only write access.
      */
     match /classSchedules/{classScheduleId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add admin-only write rules when roles are defined.
+      allow create, update, delete: if isAdmin();
     }
 
     /**
@@ -78,12 +78,12 @@ service cloud.firestore {
      * @description Controls access to gallery items.
      * @path /galleryItems/{galleryItemId}
      * @allow (get, list): Any user can read gallery items.
-     * @deny (create, update, delete): No user can create, update, or delete gallery items in this prototype. Write access is not yet defined.
-     * @principle Allows public read access to gallery items.
+     * @allow (create, update, delete): Admin users can manage gallery items.
+     * @principle Allows public read access to gallery items, and admin-only write access.
      */
     match /galleryItems/{galleryItemId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add admin-only write rules when roles are defined.
+      allow create, update, delete: if isAdmin();
     }
 
     /**
@@ -110,6 +110,14 @@ service cloud.firestore {
      */
     function isExistingOwner(userId) {
         return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Checks if the signed-in user has the 'admin' custom claim.
+     * @return {bool} True if the user is an admin, false otherwise.
+     */
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.admin == true;
     }
   }
 }

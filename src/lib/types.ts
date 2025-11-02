@@ -6,8 +6,8 @@ export type ClassSchedule = {
   startTime: string;
   durationMinutes: number;
   capacity: number;
-  spotsLeft: number;
-  icon: string;
+  spotsLeft?: number; // Made optional as it's UI-specific
+  icon?: string; // Made optional
 };
 
 export type Booking = {
@@ -23,4 +23,12 @@ export type UserProfile = {
   lastName: string;
   email: string;
   phone?: string;
+};
+
+export type GalleryItem = {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+  itemType: 'competition' | 'venue';
 };
