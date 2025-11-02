@@ -183,7 +183,8 @@ export function ClassScheduleManager() {
     if (!firestore) return;
     if (window.confirm('Are you sure you want to delete this class?')) {
       try {
-        await deleteDoc(doc(firestore, 'classSchedules', id));
+        const docRef = doc(firestore, 'classSchedules', id);
+        await deleteDoc(docRef);
         toast({ title: 'Success', description: 'Class schedule deleted.' });
         setSchedules(prevSchedules => prevSchedules.filter(s => s.id !== id));
       } catch (error: any) {
