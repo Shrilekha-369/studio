@@ -4,9 +4,6 @@ import { useState, useEffect } from 'react';
 import {
   Query,
   onSnapshot,
-  getDocs,
-  doc,
-  getDoc,
   DocumentData,
   FirestoreError,
   QuerySnapshot,
@@ -43,12 +40,11 @@ export interface InternalQuery extends Query<DocumentData> {
 /**
  * React hook to subscribe to a Firestore collection or query in real-time.
  * Handles nullable references/queries.
- * 
  *
- * IMPORTANT! YOU MUST MEMOIZE the inputted memoizedTargetRefOrQuery or BAD THINGS WILL HAPPEN
- * use useMemo to memoize it per React guidence.  Also make sure that it's dependencies are stable
+ * IMPORTANT! You MUST MEMOIZE the inputted memoizedTargetRefOrQuery or BAD THINGS WILL HAPPEN
+ * use useMemoFirebase to memoize it per React guidance.  Also make sure that its dependencies are stable
  * references
- *  
+ *
  * @template T Optional type for document data. Defaults to any.
  * @param {CollectionReference<DocumentData> | Query<DocumentData> | null | undefined} targetRefOrQuery -
  * The Firestore CollectionReference or Query. Waits if null/undefined.
@@ -61,7 +57,7 @@ export function useCollection<T = any>(
   type StateDataType = ResultItemType[] | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true); // Start loading true
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
@@ -74,20 +70,17 @@ export function useCollection<T = any>(
 
     setIsLoading(true);
     setError(null);
-    let isSubscribed = true;
 
-    const fetchDataWithIndividualGets = async () => {
-      try {
-        const querySnapshot = await getDocs(memoizedTargetRefOrQuery);
-        if (!isSubscribed) return;
-
-        const results = querySnapshot.docs.map(doc => ({ ...(doc.data() as T), id: doc.id }));
-        
+    const unsubscribe = onSnapshot(
+      memoizedTargetRefOrQuery,
+      (snapshot: QuerySnapshot<DocumentData>) => {
+        const results = snapshot.docs.map(doc => ({ ...(doc.data() as T), id: doc.id }));
         setData(results);
+        setIsLoading(false);
         setError(null);
-      } catch (e: any) {
-        if (!isSubscribed) return;
-        
+      },
+      (err: FirestoreError) => {
+        console.error("useCollection error:", err);
         const path: string =
           memoizedTargetRefOrQuery.type === 'collection'
             ? (memoizedTargetRefOrQuery as CollectionReference).path
@@ -100,38 +93,18 @@ export function useCollection<T = any>(
 
         setError(contextualError);
         errorEmitter.emit('permission-error', contextualError);
-      } finally {
-        if (isSubscribed) {
-          setIsLoading(false);
-        }
+        setData(null);
+        setIsLoading(false);
       }
-    };
-
-    fetchDataWithIndividualGets();
-
-    // Set up a listener to re-fetch if data changes. This still might fail
-    // if list permissions are the issue, but it's the best we can do for "real-time"
-    // feel without proper permissions.
-    const unsubscribe = onSnapshot(
-        memoizedTargetRefOrQuery,
-        (snapshot) => {
-            // Re-fetch using the getDocs strategy upon detecting a change.
-            fetchDataWithIndividualGets();
-        },
-        (error: FirestoreError) => {
-            fetchDataWithIndividualGets(); // Attempt fetching even if listener fails
-        }
     );
 
-
     return () => {
-      isSubscribed = false;
       unsubscribe();
     };
   }, [memoizedTargetRefOrQuery]);
 
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
-    throw new Error(memoizedTargetRefOrQuery + ' was not properly memoized using useMemoFirebase');
+    throw new Error('useCollection query was not properly memoized using useMemoFirebase. This will cause infinite loops.');
   }
 
   return { data, isLoading, error };
