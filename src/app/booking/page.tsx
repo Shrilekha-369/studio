@@ -1,3 +1,7 @@
+'use client';
+
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, orderBy } from 'firebase/firestore';
 import {
   Table,
   TableBody,
@@ -5,44 +9,62 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { BookingModal } from "@/components/booking-modal";
-import { Dumbbell, HeartPulse, Bike } from "lucide-react";
-import type { ClassSchedule } from "@/lib/types";
-
-const schedule: ClassSchedule[] = [
-  { id: 'yoga-mon-0700', className: 'Sunrise Yoga', instructor: 'Anna', dayOfWeek: 'Monday', startTime: '07:00', durationMinutes: 60, capacity: 15, spotsLeft: 8, icon: 'Dumbbell' },
-  { id: 'hiit-mon-1800', className: 'HIIT Power Hour', instructor: 'Mark', dayOfWeek: 'Monday', startTime: '18:00', durationMinutes: 60, capacity: 10, spotsLeft: 3, icon: 'HeartPulse' },
-  { id: 'spin-tue-1730', className: 'Rhythm Spin', instructor: 'Chloe', dayOfWeek: 'Tuesday', startTime: '17:30', durationMinutes: 45, capacity: 12, spotsLeft: 0, icon: 'Bike' },
-  { id: 'strength-wed-0700', className: 'Full Body Strength', instructor: 'David', dayOfWeek: 'Wednesday', startTime: '07:00', durationMinutes: 60, capacity: 12, spotsLeft: 5, icon: 'Dumbbell' },
-  { id: 'yoga-wed-1830', className: 'Restorative Flow', instructor: 'Anna', dayOfWeek: 'Wednesday', startTime: '18:30', durationMinutes: 75, capacity: 15, spotsLeft: 10, icon: 'Dumbbell' },
-  { id: 'cycle-thu-1800', className: 'Cycle & Core', instructor: 'Chloe', dayOfWeek: 'Thursday', startTime: '18:00', durationMinutes: 45, capacity: 12, spotsLeft: 2, icon: 'Bike' },
-  { id: 'hiit-sat-0900', className: 'Weekend Warrior HIIT', instructor: 'Mark', dayOfWeek: 'Saturday', startTime: '09:00', durationMinutes: 60, capacity: 10, spotsLeft: 6, icon: 'HeartPulse' },
-  { id: 'yoga-sun-1000', className: 'Sunday Zen Yoga', instructor: 'Anna', dayOfWeek: 'Sunday', startTime: '10:00', durationMinutes: 75, capacity: 15, spotsLeft: 12, icon: 'Dumbbell' },
-];
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { BookingModal } from '@/components/booking-modal';
+import { Dumbbell, HeartPulse, Bike, Activity, LucideProps } from 'lucide-react';
+import type { ClassSchedule } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const getLevel = (className: string) => {
-    if (className.includes('HIIT')) return 'Advanced';
-    if (className.includes('Yoga') || className.includes('Flow')) return 'Beginner';
-    return 'Intermediate';
-}
-
-const formatTime = (day: string, time: string) => {
-    const [hour, minute] = time.split(':');
-    const hourNum = parseInt(hour, 10);
-    const ampm = hourNum >= 12 ? 'PM' : 'AM';
-    const formattedHour = hourNum % 12 === 0 ? 12 : hourNum % 12;
-    return `${day.substring(0,3)} ${formattedHour}:${minute} ${ampm}`;
-}
-
-const iconMap: { [key: string]: React.ElementType } = {
-  Dumbbell,
-  HeartPulse,
-  Bike
+  if (className.toLowerCase().includes('hiit')) return 'Advanced';
+  if (className.toLowerCase().includes('yoga') || className.toLowerCase().includes('flow')) return 'Beginner';
+  return 'Intermediate';
 };
 
+const formatTime = (day: string, time: string) => {
+  const [hour, minute] = time.split(':');
+  const hourNum = parseInt(hour, 10);
+  const ampm = hourNum >= 12 ? 'PM' : 'AM';
+  const formattedHour = hourNum % 12 === 0 ? 12 : hourNum % 12;
+  return `${day.substring(0, 3)} ${formattedHour}:${minute} ${ampm}`;
+};
+
+const iconMap: { [key: string]: React.ElementType<LucideProps> } = {
+  Dumbbell,
+  HeartPulse,
+  Bike,
+  Yoga: Dumbbell, // Defaulting to Dumbbell for yoga as there's no specific yoga icon
+  HIIT: HeartPulse,
+  Spin: Bike,
+  Strength: Dumbbell,
+  Cycle: Bike,
+  Default: Activity,
+};
+
+const getIcon = (className: string): React.ElementType<LucideProps> => {
+    if (className.toLowerCase().includes('yoga')) return iconMap.Yoga;
+    if (className.toLowerCase().includes('hiit')) return iconMap.HIIT;
+    if (className.toLowerCase().includes('spin') || className.toLowerCase().includes('cycle')) return iconMap.Cycle;
+    if (className.toLowerCase().includes('strength')) return iconMap.Strength;
+    return iconMap.Default;
+}
+
 export default function BookingPage() {
+  const firestore = useFirestore();
+  const schedulesQuery = useMemoFirebase(
+    () => query(collection(firestore, 'classSchedules'), orderBy('startTime')),
+    [firestore]
+  );
+  const { data: schedule, isLoading } = useCollection<ClassSchedule>(schedulesQuery);
+  
+  // Calculate spots left. This is a simplification. In a real app, this would query a bookings collection.
+  const scheduleWithSpots = schedule?.map(s => ({
+    ...s,
+    // This is a mock calculation. A real implementation would need to query bookings.
+    spotsLeft: s.capacity - (Math.floor(Math.random() * (s.capacity / 2))), 
+  })) || [];
+
   return (
     <div className="container max-w-screen-lg mx-auto py-12 px-4 md:px-6">
       <div className="text-center mb-12">
@@ -63,34 +85,54 @@ export default function BookingPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {schedule.map((classInfo) => {
-              const IconComponent = iconMap[classInfo.icon];
-              const level = getLevel(classInfo.className);
-              return (
-                <TableRow key={classInfo.id}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-3">
-                      {IconComponent && <IconComponent className="h-5 w-5 text-primary hidden sm:inline-block" />}
-                      {classInfo.className}
-                    </div>
-                  </TableCell>
-                  <TableCell>{classInfo.instructor}</TableCell>
-                  <TableCell>{formatTime(classInfo.dayOfWeek, classInfo.startTime)}</TableCell>
-                  <TableCell>
-                    <Badge variant={
-                      level === 'Beginner' ? 'secondary' :
-                      level === 'Intermediate' ? 'default' : 'destructive'
-                    } className="bg-primary/20 text-primary-foreground">
-                      {level}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-center">{classInfo.spotsLeft}</TableCell>
-                  <TableCell className="text-right">
-                    <BookingModal classInfo={classInfo} />
-                  </TableCell>
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={`skel-${i}`}>
+                  <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-1/2" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-2/3" /></TableCell>
+                  <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                  <TableCell className="text-center"><Skeleton className="h-5 w-4 mx-auto" /></TableCell>
+                  <TableCell className="text-right"><Skeleton className="h-8 w-24 ml-auto" /></TableCell>
                 </TableRow>
-              );
-            })}
+              ))
+            ) : (
+              scheduleWithSpots.map((classInfo) => {
+                const IconComponent = getIcon(classInfo.className);
+                const level = getLevel(classInfo.className);
+                return (
+                  <TableRow key={classInfo.id}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-3">
+                        {IconComponent && <IconComponent className="h-5 w-5 text-primary hidden sm:inline-block" />}
+                        {classInfo.className}
+                      </div>
+                    </TableCell>
+                    <TableCell>{classInfo.instructor}</TableCell>
+                    <TableCell>{formatTime(classInfo.dayOfWeek, classInfo.startTime)}</TableCell>
+                    <TableCell>
+                      <Badge variant={
+                        level === 'Beginner' ? 'secondary' :
+                        level === 'Intermediate' ? 'default' : 'destructive'
+                      } className="bg-primary/20 text-primary-foreground">
+                        {level}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center">{classInfo.spotsLeft}</TableCell>
+                    <TableCell className="text-right">
+                      <BookingModal classInfo={classInfo} />
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+             {!isLoading && scheduleWithSpots.length === 0 && (
+                <TableRow>
+                    <TableCell colSpan={6} className="text-center h-24">
+                        No classes scheduled at the moment. Please check back later.
+                    </TableCell>
+                </TableRow>
+             )}
           </TableBody>
         </Table>
       </div>
