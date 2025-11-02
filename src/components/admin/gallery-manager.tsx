@@ -4,7 +4,7 @@
 import { useState, useMemo } from 'react';
 import { useCollection, useFirestore, useMemoFirebase, useStorage } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, uploadBytesResumable, type UploadTask } from 'firebase/storage';
 import type { GalleryItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -120,44 +120,62 @@ export function GalleryManager() {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
   const galleryItemsRef = useMemoFirebase(() => collection(firestore, 'galleryItems'), [firestore]);
-  const { data: galleryItems, isLoading, setData: setGalleryItems } = useCollection<GalleryItem>(galleryItemsRef);
+  const { data: galleryItems, isLoading } = useCollection<GalleryItem>(galleryItemsRef);
 
   const handleSave = async (data: Partial<GalleryItem>, file?: File) => {
     if (!firestore || !storage) return;
 
+    // Close the dialog immediately for a better UX
+    closeDialog();
+
     try {
-      let imageUrl = data.imageUrl;
-
-      if (file) {
-        setUploadProgress(0); // Show progress bar
-        const storageRef = ref(storage, `gallery/${Date.now()}_${file.name}`);
-        await uploadBytes(storageRef, file);
-        imageUrl = await getDownloadURL(storageRef);
-        setUploadProgress(100);
+      // If we are just updating text fields without a new image
+      if (!file) {
+        if (editingItem) {
+          const docRef = doc(firestore, 'galleryItems', editingItem.id);
+          await updateDoc(docRef, data);
+          toast({ title: 'Success', description: 'Gallery item updated.' });
+        }
+        return; // Nothing else to do
       }
 
-      if (!imageUrl) {
-        toast({ title: 'Error', description: 'No image provided.', variant: 'destructive' });
-        return;
-      }
+      // If a file is present, start the upload process.
+      const storageRef = ref(storage, `gallery/${Date.now()}_${file.name}`);
+      const uploadTask: UploadTask = uploadBytesResumable(storageRef, file);
 
-      const dataToSave = { ...data, imageUrl };
-      
-      if (editingItem) {
-        const docRef = doc(firestore, 'galleryItems', editingItem.id);
-        await updateDoc(docRef, dataToSave);
-        toast({ title: 'Success', description: 'Gallery item updated.' });
-        // The real-time listener from useCollection will handle the UI update
-      } else {
-        await addDoc(collection(firestore, 'galleryItems'), dataToSave);
-        toast({ title: 'Success', description: 'New gallery item added.' });
-        // The real-time listener from useCollection will handle the UI update
-      }
-      closeDialog();
+      // Listen to upload progress
+      uploadTask.on('state_changed',
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setUploadProgress(progress);
+        },
+        (error) => {
+          console.error("Upload failed:", error);
+          toast({ title: 'Upload Failed', description: error.message, variant: 'destructive' });
+          setUploadProgress(null);
+        },
+        () => {
+          // Upload completed successfully, now get the download URL
+          getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
+            const dataToSave = { ...data, imageUrl: downloadURL };
+
+            if (editingItem) {
+              const docRef = doc(firestore, 'galleryItems', editingItem.id);
+              await updateDoc(docRef, dataToSave);
+              toast({ title: 'Success', description: 'Gallery item updated.' });
+            } else {
+              await addDoc(collection(firestore, 'galleryItems'), dataToSave);
+              toast({ title: 'Success', description: 'New item added and uploaded.' });
+            }
+            // Hide progress bar after a short delay
+            setTimeout(() => setUploadProgress(null), 2000);
+          });
+        }
+      );
+
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } finally {
-        setTimeout(() => setUploadProgress(null), 1000);
+      setUploadProgress(null); // Hide progress on error
     }
   };
   
@@ -202,8 +220,8 @@ export function GalleryManager() {
       </div>
       
       {uploadProgress !== null && (
-        <div className="my-4">
-          <Label>Uploading...</Label>
+        <div className="my-4 space-y-2">
+          <Label className="text-sm font-medium">Uploading Image...</Label>
           <Progress value={uploadProgress} className="w-full" />
         </div>
       )}
@@ -245,3 +263,4 @@ export function GalleryManager() {
     </div>
   );
 }
+
