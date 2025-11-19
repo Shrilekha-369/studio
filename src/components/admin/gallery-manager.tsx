@@ -251,27 +251,22 @@ export function GalleryManager() {
 
   const handleDelete = async (item: GalleryItem) => {
     if (!firestore) return;
+
+    const isUploading = item.id.startsWith('local_');
   
     // If it's a local item that's uploading, cancel the upload
-    const uploadInfo = uploadManager.get(item.id);
-    if (uploadInfo) {
-      uploadInfo.uploadTask.cancel();
-      uploadManager.remove(item.id);
-      
-      // Clean up local state immediately
-      setLocalUploads(prev => prev.filter(local => local.id !== item.id));
-      setUploadProgress(prev => {
-        const newProgress = { ...prev };
-        delete newProgress[item.id];
-        return newProgress;
-      });
-      
-      // Delete the firestore doc that was created
-      const docRef = doc(firestore, 'galleryItems', uploadInfo.docId);
-      await deleteDoc(docRef);
+    if (isUploading) {
+        const uploadInfo = uploadManager.get(item.id);
+        if (uploadInfo) {
+            uploadInfo.uploadTask.cancel();
+            uploadManager.remove(item.id);
+            
+            // Delete the firestore doc that was created
+            const docRef = doc(firestore, 'galleryItems', uploadInfo.docId);
+            await deleteDoc(docRef).catch(e => console.warn("Could not delete temp firestore doc", e));
 
-      toast({ title: 'Success', description: 'Upload canceled and item removed.' });
-
+            toast({ title: 'Success', description: 'Upload canceled and item removed.' });
+        }
     } else if (item.imageUrl && !item.id.startsWith('local_')) {
       // It's a completed item from Firestore
       try {
@@ -297,6 +292,14 @@ export function GalleryManager() {
         await deleteDoc(doc(firestore, 'galleryItems', item.id));
         toast({ title: 'Success', description: 'Gallery item deleted.' });
     }
+
+    // Immediately remove from local state for instant UI update
+    setLocalUploads(prev => prev.filter(local => local.id !== item.id));
+    setUploadProgress(prev => {
+        const newProgress = { ...prev };
+        delete newProgress[item.id];
+        return newProgress;
+    });
   };
 
   const handleCancelAll = async () => {
@@ -383,8 +386,9 @@ export function GalleryManager() {
           </TableHeader>
           <TableBody>
             {galleryItems.map((item) => {
-              const isUploading = item.id.startsWith('local_') && item.imageUrl === 'uploading';
+              const isUploading = item.id.startsWith('local_');
               const progress = uploadProgress[item.id];
+              const isUrlValid = item.imageUrl && item.imageUrl.startsWith('http');
 
               return (
                 <TableRow key={item.id}>
@@ -396,7 +400,7 @@ export function GalleryManager() {
                         </div>
                     ) : item.imageUrl === 'failed' ? (
                         <span className="text-xs text-destructive">Upload Failed</span>
-                    ) : item.imageUrl !== 'placeholder' ? (
+                    ) : isUrlValid ? (
                         <Image
                             src={item.imageUrl}
                             alt={item.title || 'Gallery Image'}
