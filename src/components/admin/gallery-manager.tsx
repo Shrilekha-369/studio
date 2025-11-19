@@ -1,10 +1,10 @@
 
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useCollection, useFirestore, useMemoFirebase, useStorage } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { collection, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL, UploadTask, deleteObject } from 'firebase/storage';
 import type { GalleryItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,112 +21,32 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Edit, PlusCircle, Trash2, Upload, X } from 'lucide-react';
+import { Edit, PlusCircle, Trash2, Upload, X, Ban } from 'lucide-react';
 import Image from 'next/image';
 import { Progress } from '../ui/progress';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
-const ImageDropzone = ({ onUrlChange, setUploading }: { onUrlChange: (url: string) => void; setUploading: (isUploading: boolean) => void; }) => {
-  const storage = useStorage();
-  const { toast } = useToast();
-  const [isDragging, setIsDragging] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+// To manage uploads that might not be tied to component state
+const uploadManager = {
+  tasks: new Map<string, { uploadTask: UploadTask; docId: string }>(),
 
-  const handleFileChange = (files: FileList | null) => {
-    if (files && files[0]) {
-      handleUpload(files[0]);
-    }
-  };
+  add(id: string, uploadTask: UploadTask, docId: string) {
+    this.tasks.set(id, { uploadTask, docId });
+  },
 
-  const handleUpload = async (file: File) => {
-    if (!storage) {
-        toast({ title: "Storage not available", variant: 'destructive'});
-        return;
-    }
-    if (!file.type.startsWith('image/')) {
-      toast({ title: 'Invalid File Type', description: 'Please upload an image file.', variant: 'destructive' });
-      return;
-    }
+  get(id: string) {
+    return this.tasks.get(id);
+  },
 
-    setUploading(true);
-    setUploadProgress(0);
-    const storageRef = ref(storage, `gallery-images/${Date.now()}-${file.name}`);
-    
-    try {
-      // For progress, we'd need uploadBytesResumable, but for simplicity let's stick to uploadBytes
-      // This is a simplified progress simulation
-      const uploadTask = uploadBytes(storageRef, file);
-      
-      // Simulate progress
-      const interval = setInterval(() => {
-          setUploadProgress(prev => {
-              if (prev === null) return 0;
-              if (prev >= 95) return prev;
-              return prev + 5;
-          });
-      }, 200);
+  remove(id: string) {
+    this.tasks.delete(id);
+  },
 
-      await uploadTask;
-      clearInterval(interval);
-      setUploadProgress(100);
-
-      const downloadURL = await getDownloadURL(storageRef);
-      onUrlChange(downloadURL);
-      toast({ title: 'Upload Successful', description: 'Image URL has been set.' });
-    } catch (error: any) {
-      toast({ title: 'Upload Failed', description: error.message, variant: 'destructive' });
-      setUploadProgress(null);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setIsDragging(true);
-    } else if (e.type === 'dragleave') {
-      setIsDragging(false);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleUpload(e.dataTransfer.files[0]);
-      e.dataTransfer.clearData();
-    }
-  };
-
-  return (
-    <div className="col-span-3">
-        <label
-            htmlFor="dropzone-file"
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-            className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted/50 ${isDragging ? 'border-primary' : 'border-input'}`}
-        >
-            <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
-                <p className="mb-1 text-sm text-muted-foreground">
-                    <span className="font-semibold">Click to upload</span> or drag and drop
-                </p>
-                <p className="text-xs text-muted-foreground">PNG, JPG, GIF up to 10MB</p>
-            </div>
-            <input id="dropzone-file" type="file" className="hidden" onChange={e => handleFileChange(e.target.files)} accept="image/*" />
-        </label>
-        {uploadProgress !== null && (
-            <div className="mt-2">
-                <Progress value={uploadProgress} className="w-full" />
-                <p className="text-sm text-center mt-1">{uploadProgress}%</p>
-            </div>
-        )}
-    </div>
-  )
+  cancelAll() {
+    const tasksToCancel = Array.from(this.tasks.values());
+    this.tasks.clear();
+    return tasksToCancel;
+  },
 };
 
 
@@ -136,33 +56,34 @@ const GalleryItemForm = ({
   closeDialog,
 }: {
   item?: GalleryItem;
-  onSave: (data: Omit<GalleryItem, 'id'>) => void;
+  onSave: (data: Omit<GalleryItem, 'id' | 'imageUrl'>, file?: File) => void;
   closeDialog: () => void;
 }) => {
   const [formData, setFormData] = useState({
     title: item?.title || '',
     description: item?.description || '',
     itemType: item?.itemType || 'venue',
-    imageUrl: item?.imageUrl || '',
   });
-  const [isUploading, setIsUploading] = useState(false);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  const [file, setFile] = useState<File | undefined>();
+  const [preview, setPreview] = useState<string | undefined>(item?.imageUrl);
+  
+  const handleFileChange = (files: FileList | null) => {
+    if (files && files[0]) {
+      const selectedFile = files[0];
+       if (!selectedFile.type.startsWith('image/')) {
+        alert('Please select an image file.');
+        return;
+      }
+      setFile(selectedFile);
+      const previewUrl = URL.createObjectURL(selectedFile);
+      setPreview(previewUrl);
+    }
   };
-
-  const handleSelectChange = (value: 'venue' | 'competition') => {
-    setFormData((prev) => ({ ...prev, itemType: value as 'venue' | 'competition' }));
-  };
-
-  const handleUrlChange = useCallback((url: string) => {
-    setFormData(prev => ({...prev, imageUrl: url}));
-  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    onSave(formData, file);
+    closeDialog();
   };
 
   return (
@@ -175,23 +96,17 @@ const GalleryItemForm = ({
       </DialogHeader>
       <div className="grid gap-4 py-4">
         <div className="grid grid-cols-4 items-center gap-4">
-          <Label className="text-right">Upload</Label>
-          <ImageDropzone onUrlChange={handleUrlChange} setUploading={setIsUploading} />
+            <Label className="text-right">Image</Label>
+            <div className="col-span-3">
+                 <Input id="image-upload" type="file" onChange={(e) => handleFileChange(e.target.files)} accept="image/*" className="h-11"/>
+                 {!item && <p className="text-xs text-muted-foreground mt-1">You can save now and the upload will begin in the background.</p>}
+            </div>
         </div>
         
-        {formData.imageUrl && (
+        {preview && (
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="imageUrl" className="text-right">
-              Image URL
-            </Label>
-            <div className="col-span-3 relative">
-                <Input id="imageUrl" name="imageUrl" value={formData.imageUrl} onChange={handleChange} className="pr-10" required />
-                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => handleUrlChange('')}>
-                    <X className="h-4 w-4" />
-                </Button>
-            </div>
             <div className="col-start-2 col-span-3">
-              <Image src={formData.imageUrl} alt="Preview" width={80} height={60} className="rounded-md object-cover" />
+              <Image src={preview} alt="Preview" width={80} height={60} className="rounded-md object-cover" />
             </div>
           </div>
         )}
@@ -200,19 +115,19 @@ const GalleryItemForm = ({
           <Label htmlFor="title" className="text-right">
             Title
           </Label>
-          <Input id="title" name="title" value={formData.title} onChange={handleChange} className="col-span-3" />
+          <Input id="title" name="title" value={formData.title} onChange={(e) => setFormData(p => ({...p, title: e.target.value}))} className="col-span-3" />
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="description" className="text-right">
             Description
           </Label>
-          <Input id="description" name="description" value={formData.description} onChange={handleChange} className="col-span-3" />
+          <Input id="description" name="description" value={formData.description} onChange={(e) => setFormData(p => ({...p, description: e.target.value}))} className="col-span-3" />
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="itemType" className="text-right">
             Type
           </Label>
-          <Select name="itemType" value={formData.itemType} onValueChange={handleSelectChange}>
+          <Select name="itemType" value={formData.itemType} onValueChange={(v) => setFormData(p => ({...p, itemType: v as 'venue' | 'competition'}))}>
             <SelectTrigger className="col-span-3">
               <SelectValue placeholder="Select a type" />
             </SelectTrigger>
@@ -224,11 +139,11 @@ const GalleryItemForm = ({
         </div>
       </div>
       <DialogFooter>
-        <Button type="button" variant="secondary" onClick={closeDialog} disabled={isUploading}>
+        <Button type="button" variant="secondary" onClick={closeDialog}>
           Cancel
         </Button>
-        <Button type="submit" disabled={isUploading || !formData.imageUrl}>
-          {isUploading ? 'Uploading...' : 'Save'}
+        <Button type="submit">
+          Save
         </Button>
       </DialogFooter>
     </form>
@@ -238,51 +153,175 @@ const GalleryItemForm = ({
 
 export function GalleryManager() {
   const firestore = useFirestore();
+  const storage = useStorage();
   const { toast } = useToast();
+  
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<GalleryItem | undefined>(undefined);
 
   const galleryItemsRef = useMemoFirebase(() => collection(firestore, 'galleryItems'), [firestore]);
-  const { data: galleryItems, isLoading, error } = useCollection<GalleryItem>(galleryItemsRef);
+  const { data: serverGalleryItems, isLoading, error } = useCollection<GalleryItem>(galleryItemsRef);
   
+  const [localUploads, setLocalUploads] = useState<GalleryItem[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<{[key: string]: number}>({});
+
+  const galleryItems = useMemo(() => {
+    const combined = [...(serverGalleryItems || [])];
+    
+    localUploads.forEach(localItem => {
+        if (!combined.some(serverItem => serverItem.id === localItem.id)) {
+            combined.push(localItem);
+        }
+    });
+
+    return combined.sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0));
+  }, [serverGalleryItems, localUploads]);
+
+
   if (error) {
     console.error("Error fetching gallery items:", error);
-    toast({
-      title: "Error",
-      description: "Could not fetch gallery items.",
-      variant: "destructive"
-    });
   }
 
-  const handleSave = async (data: Omit<GalleryItem, 'id'>) => {
-    if (!firestore) return;
+  const handleSave = async (data: Omit<GalleryItem, 'id' | 'imageUrl'>, file?: File) => {
+    if (!firestore || !storage) return;
 
-    try {
-        if (editingItem) {
-            const docRef = doc(firestore, 'galleryItems', editingItem.id);
-            await updateDoc(docRef, data);
-            toast({ title: 'Success', description: 'Gallery item updated.' });
+    if (editingItem) { // Updating existing item
+        const docRef = doc(firestore, 'galleryItems', editingItem.id);
+        await updateDoc(docRef, data);
+        toast({ title: 'Success', description: 'Gallery item updated.' });
+    } else { // Creating new item
+        const tempId = `local_${Date.now()}`;
+        const newDoc: Omit<GalleryItem, 'id'> & { createdAt: any } = {
+          ...data,
+          imageUrl: 'uploading', // Placeholder status
+          createdAt: serverTimestamp(),
+        };
+
+        if (file) {
+            const localItem = { ...newDoc, id: tempId, createdAt: Date.now() / 1000 };
+            setLocalUploads(prev => [...prev, localItem]);
+            setUploadProgress(prev => ({...prev, [tempId]: 0}));
+            
+            const docRef = await addDoc(collection(firestore, 'galleryItems'), newDoc);
+            handleUpload(file, docRef.id, tempId);
+            toast({ title: 'Success', description: 'Gallery item saved. Uploading in background.' });
         } else {
-            await addDoc(collection(firestore, 'galleryItems'), data);
-            toast({ title: 'Success', description: 'Gallery item added.' });
+            await addDoc(collection(firestore, 'galleryItems'), { ...newDoc, imageUrl: 'placeholder' });
+            toast({ title: 'Success', description: 'Gallery item added without an image.' });
         }
-        closeDialog();
-    } catch (err: any) {
-        toast({ title: 'Error', description: err.message, variant: 'destructive' });
     }
+    closeDialog();
   };
+
+  const handleUpload = (file: File, docId: string, tempId: string) => {
+    if (!storage) return;
+    const storageRef = ref(storage, `gallery-images/${docId}-${file.name}`);
+    const uploadTask = uploadBytesResumable(storageRef, file);
+    
+    uploadManager.add(tempId, uploadTask, docId);
+
+    uploadTask.on('state_changed',
+        (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            setUploadProgress(prev => ({...prev, [tempId]: progress}));
+        },
+        (error) => {
+            console.error("Upload failed:", error);
+            const docRef = doc(firestore, 'galleryItems', docId);
+            updateDoc(docRef, { imageUrl: 'failed' });
+            toast({ title: `Upload Failed for ${file.name}`, description: error.message, variant: 'destructive' });
+            setLocalUploads(prev => prev.filter(item => item.id !== tempId));
+            delete uploadProgress[tempId];
+            setUploadProgress({...uploadProgress});
+            uploadManager.remove(tempId);
+        },
+        async () => {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            const docRef = doc(firestore, 'galleryItems', docId);
+            await updateDoc(docRef, { imageUrl: downloadURL });
+            
+            // Clean up local state
+            setLocalUploads(prev => prev.filter(item => item.id !== tempId));
+            delete uploadProgress[tempId];
+            setUploadProgress({...uploadProgress});
+            uploadManager.remove(tempId);
+        }
+    );
+  }
 
   const handleDelete = async (item: GalleryItem) => {
     if (!firestore) return;
-    try {
-      await deleteDoc(doc(firestore, 'galleryItems', item.id));
-      toast({ title: 'Success', description: 'Gallery item deleted.' });
-    } catch (error: any) {
-       toast({ title: 'Deletion Failed', description: error.message, variant: 'destructive' });
-       console.error("Delete gallery item failed:", error);
+  
+    // If it's a local item that's uploading, cancel the upload
+    const uploadInfo = uploadManager.get(item.id);
+    if (uploadInfo) {
+      uploadInfo.uploadTask.cancel();
+      uploadManager.remove(item.id);
+      
+      // Clean up local state immediately
+      setLocalUploads(prev => prev.filter(local => local.id !== item.id));
+      setUploadProgress(prev => {
+        const newProgress = { ...prev };
+        delete newProgress[item.id];
+        return newProgress;
+      });
+      
+      // Delete the firestore doc that was created
+      const docRef = doc(firestore, 'galleryItems', uploadInfo.docId);
+      await deleteDoc(docRef);
+
+      toast({ title: 'Success', description: 'Upload canceled and item removed.' });
+
+    } else if (item.imageUrl && !item.id.startsWith('local_')) {
+      // It's a completed item from Firestore
+      try {
+        if (storage && item.imageUrl.includes('firebasestorage')) {
+          const imageRef = ref(storage, item.imageUrl);
+          await deleteObject(imageRef).catch(err => {
+              // Ignore not found errors, as the file might already be deleted
+              if (err.code !== 'storage/object-not-found') {
+                  throw err;
+              }
+          });
+        }
+        
+        await deleteDoc(doc(firestore, 'galleryItems', item.id));
+        toast({ title: 'Success', description: 'Gallery item deleted.' });
+
+      } catch (error: any) {
+        toast({ title: 'Deletion Failed', description: error.message, variant: 'destructive' });
+        console.error("Delete gallery item failed:", error);
+      }
+    } else {
+        // Fallback for items in a weird state (e.g., 'failed' or 'placeholder')
+        await deleteDoc(doc(firestore, 'galleryItems', item.id));
+        toast({ title: 'Success', description: 'Gallery item deleted.' });
     }
   };
 
+  const handleCancelAll = async () => {
+    if (!firestore) return;
+
+    const tasksToCancel = uploadManager.cancelAll();
+    
+    if (tasksToCancel.length === 0) {
+      toast({ title: 'No active uploads', description: 'There are no uploads to cancel.' });
+      return;
+    }
+
+    const deletePromises = tasksToCancel.map(taskInfo => {
+      return deleteDoc(doc(firestore, 'galleryItems', taskInfo.docId));
+    });
+
+    try {
+      await Promise.all(deletePromises);
+      setLocalUploads([]);
+      setUploadProgress({});
+      toast({ title: 'Success', description: `${tasksToCancel.length} uploads have been canceled and removed.` });
+    } catch (error: any) {
+      toast({ title: 'Error', description: `Failed to remove all items: ${error.message}`, variant: 'destructive' });
+    }
+  };
 
   const openDialog = (item?: GalleryItem) => {
     setEditingItem(item);
@@ -293,26 +332,42 @@ export function GalleryManager() {
     setEditingItem(undefined);
     setDialogOpen(false);
   };
+  
+  const activeUploadsCount = Object.keys(uploadManager.tasks).length;
 
   return (
     <div className="border rounded-lg shadow-lg overflow-hidden bg-card p-4">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold font-headline">Manage Gallery</h2>
-        <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => openDialog()}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Item
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[625px]">
-            <GalleryItemForm 
-              item={editingItem} 
-              onSave={handleSave} 
-              closeDialog={closeDialog}
-            />
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-2">
+            {activeUploadsCount > 0 && (
+                <Button onClick={handleCancelAll} variant="destructive" size="sm">
+                    <Ban className="mr-2 h-4 w-4" /> Cancel All ({activeUploadsCount})
+                </Button>
+            )}
+            <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+                <Button onClick={() => openDialog()}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Item
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[625px]">
+                <GalleryItemForm 
+                item={editingItem} 
+                onSave={handleSave} 
+                closeDialog={closeDialog}
+                />
+            </DialogContent>
+            </Dialog>
+        </div>
       </div>
+      
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>Could not fetch gallery items. Please try again later.</AlertDescription>
+        </Alert>
+      )}
 
       {isLoading && <p className="py-4">Loading gallery items...</p>}
       
@@ -327,29 +382,45 @@ export function GalleryManager() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {galleryItems.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell>
-                  <Image
-                    src={item.imageUrl}
-                    alt={item.title || 'Gallery Image'}
-                    width={80}
-                    height={60}
-                    className="rounded-md object-cover"
-                  />
-                </TableCell>
-                <TableCell>{item.title || '-'}</TableCell>
-                <TableCell className="capitalize">{item.itemType}</TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="icon" onClick={() => openDialog(item)}>
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete(item)}>
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
+            {galleryItems.map((item) => {
+              const isUploading = item.id.startsWith('local_') && item.imageUrl === 'uploading';
+              const progress = uploadProgress[item.id];
+
+              return (
+                <TableRow key={item.id}>
+                    <TableCell>
+                    {isUploading ? (
+                        <div className="w-20">
+                            <Progress value={progress} className="h-2"/>
+                            <p className="text-xs text-center">{Math.round(progress || 0)}%</p>
+                        </div>
+                    ) : item.imageUrl === 'failed' ? (
+                        <span className="text-xs text-destructive">Upload Failed</span>
+                    ) : item.imageUrl !== 'placeholder' ? (
+                        <Image
+                            src={item.imageUrl}
+                            alt={item.title || 'Gallery Image'}
+                            width={80}
+                            height={60}
+                            className="rounded-md object-cover"
+                        />
+                    ): (
+                        <span className="text-xs text-muted-foreground">No Image</span>
+                    )}
+                    </TableCell>
+                    <TableCell>{item.title || '-'}</TableCell>
+                    <TableCell className="capitalize">{item.itemType}</TableCell>
+                    <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" onClick={() => openDialog(item)} disabled={isUploading}>
+                        <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(item)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                    </TableCell>
+                </TableRow>
+              )
+            })}
           </TableBody>
         </Table>
       )}
@@ -357,3 +428,5 @@ export function GalleryManager() {
     </div>
   );
 }
+
+    
