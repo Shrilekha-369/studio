@@ -174,11 +174,13 @@ export function BookingModal({ classInfo }: { classInfo: ClassSchedule }) {
     )
   }
 
+  const spotsLeft = classInfo.spotsLeft ?? 0;
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="default" disabled={classInfo.spotsLeft === 0} className="disabled:opacity-50 disabled:cursor-not-allowed">
-          {classInfo.spotsLeft > 0 ? "Book Demo" : "Full"}
+        <Button size="sm" variant="default" disabled={spotsLeft === 0} className="disabled:opacity-50 disabled:cursor-not-allowed">
+          {spotsLeft > 0 ? "Book Demo" : "Full"}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px] bg-background p-0">

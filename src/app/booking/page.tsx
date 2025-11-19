@@ -149,7 +149,7 @@ export default function BookingPage() {
                         {level}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-center">{classInfo.spotsLeft}</TableCell>
+                    <TableCell className="text-center">{classInfo.spotsLeft ?? 0}</TableCell>
                     <TableCell className="text-right">
                       <BookingModal classInfo={classInfo} />
                     </TableCell>
