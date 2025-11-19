@@ -4,12 +4,14 @@ import { Facebook, Instagram, Twitter } from "lucide-react";
 import Image from "next/image";
 
 export function Footer() {
+  const logoUrl = "https://content.jdmagicbox.com/comp/bangalore/j7/080pxx80.xx80.170522171501.p2j7/logo/b9dfb5894ded08994754593e782a613d.jpg";
+
   return (
     <footer className="border-t border-border/40">
       <div className="container max-w-screen-2xl py-8">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/Logo.jpg" alt="One Fitness Logo" width={24} height={24} className="flex-shrink-0" />
+            <Image src={logoUrl} alt="One Fitness Logo" width={24} height={24} className="flex-shrink-0" />
             <span className="font-headline font-bold text-lg whitespace-nowrap">One Fitness</span>
           </Link>
           <p className="text-sm text-foreground/60 text-center">
