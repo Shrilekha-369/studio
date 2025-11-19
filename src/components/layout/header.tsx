@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import Image from "next/image";
 
 
 const navItems = [
@@ -51,8 +52,7 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 max-w-screen-2xl items-center justify-between">
         <Link href="/" className="flex items-center gap-2" onClick={() => setIsOpen(false)}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/Logo.jpg" alt="One Fitness Logo" width={32} height={32} className="flex-shrink-0" />
+          <Image src="/Logo.jpg" alt="One Fitness Logo" width={32} height={32} className="flex-shrink-0" />
           <span className="font-headline font-bold text-lg whitespace-nowrap">One Fitness</span>
         </Link>
 
@@ -127,8 +127,7 @@ export function Header() {
             <SheetContent side="right" className="w-[300px] bg-background">
               <div className="p-4">
                 <Link href="/" className="flex items-center gap-2 mb-8" onClick={() => setIsOpen(false)}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/Logo.jpg" alt="One Fitness Logo" width={32} height={32} />
+                  <Image src="/Logo.jpg" alt="One Fitness Logo" width={32} height={32} />
                   <span className="font-headline font-bold text-lg whitespace-nowrap">One Fitness</span>
                 </Link>
                 <nav className="flex flex-col gap-4">
