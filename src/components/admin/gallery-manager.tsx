@@ -225,14 +225,24 @@ export function GalleryManager() {
             const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
             setUploadProgress(prev => ({...prev, [tempId]: progress}));
         },
-        (error) => {
-            console.error("Upload failed:", error);
-            const docRef = doc(firestore, 'galleryItems', docId);
-            updateDoc(docRef, { imageUrl: 'failed' });
-            toast({ title: `Upload Failed for ${file.name}`, description: error.message, variant: 'destructive' });
+        (error: any) => {
+            // Don't show toast for user-initiated cancellations
+            if (error.code === 'storage/canceled') {
+              console.log('Upload canceled by user.');
+            } else {
+              console.error("Upload failed:", error);
+              const docRef = doc(firestore, 'galleryItems', docId);
+              updateDoc(docRef, { imageUrl: 'failed' });
+              toast({ title: `Upload Failed for ${file.name}`, description: error.message, variant: 'destructive' });
+            }
+            
+            // Clean up local state regardless of error type
             setLocalUploads(prev => prev.filter(item => item.id !== tempId));
-            delete uploadProgress[tempId];
-            setUploadProgress({...uploadProgress});
+            setUploadProgress(prev => {
+              const newProgress = { ...prev };
+              delete newProgress[tempId];
+              return newProgress;
+            });
             uploadManager.remove(tempId);
         },
         async () => {
@@ -242,8 +252,11 @@ export function GalleryManager() {
             
             // Clean up local state
             setLocalUploads(prev => prev.filter(item => item.id !== tempId));
-            delete uploadProgress[tempId];
-            setUploadProgress({...uploadProgress});
+            setUploadProgress(prev => {
+                const newProgress = { ...prev };
+                delete newProgress[tempId];
+                return newProgress;
+            });
             uploadManager.remove(tempId);
         }
     );
@@ -289,8 +302,10 @@ export function GalleryManager() {
       }
     } else {
         // Fallback for items in a weird state (e.g., 'failed' or 'placeholder')
-        await deleteDoc(doc(firestore, 'galleryItems', item.id));
-        toast({ title: 'Success', description: 'Gallery item deleted.' });
+        if (!item.id.startsWith('local_')) {
+          await deleteDoc(doc(firestore, 'galleryItems', item.id));
+          toast({ title: 'Success', description: 'Gallery item deleted.' });
+        }
     }
 
     // Immediately remove from local state for instant UI update
@@ -432,5 +447,3 @@ export function GalleryManager() {
     </div>
   );
 }
-
-    
