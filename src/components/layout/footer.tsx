@@ -1,8 +1,7 @@
 
 import Link from "next/link";
 import { Facebook, Instagram, Twitter } from "lucide-react";
-
-const logoUrl = "/logo.jpg";
+import { logoUrl } from "@/lib/config";
 
 export function Footer() {
   return (

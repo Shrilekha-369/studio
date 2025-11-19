@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { logoUrl } from "@/lib/config";
 
 const navItems = [
   { href: "/", label: "Home" },
@@ -26,8 +27,6 @@ const navItems = [
   { href: "/gallery", label: "Gallery" },
   { href: "/contact", label: "Contact Us" },
 ];
-
-const logoUrl = "/logo.jpg";
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
