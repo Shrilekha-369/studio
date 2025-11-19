@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useCollection, useFirestore, useMemoFirebase, useStorage } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL, UploadTask, deleteObject } from 'firebase/storage';
@@ -174,7 +174,7 @@ export function GalleryManager() {
         }
     });
 
-    return combined.sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0));
+    return combined.sort((a,b) => ((b as any).createdAt || 0) - ((a as any).createdAt || 0));
   }, [serverGalleryItems, localUploads]);
 
 
@@ -198,7 +198,7 @@ export function GalleryManager() {
         };
 
         if (file) {
-            const localItem = { ...newDoc, id: tempId, createdAt: Date.now() / 1000 };
+            const localItem = { ...newDoc, id: tempId, createdAt: Date.now() / 1000 } as GalleryItem;
             setLocalUploads(prev => [...prev, localItem]);
             setUploadProgress(prev => ({...prev, [tempId]: 0}));
             
