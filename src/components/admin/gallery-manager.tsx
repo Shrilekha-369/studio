@@ -1,9 +1,10 @@
 
 'use client';
 
-import { useState } from 'react';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useState, useCallback } from 'react';
+import { useCollection, useFirestore, useMemoFirebase, useStorage } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { GalleryItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,8 +21,114 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Edit, PlusCircle, Trash2 } from 'lucide-react';
+import { Edit, PlusCircle, Trash2, Upload, X } from 'lucide-react';
 import Image from 'next/image';
+import { Progress } from '../ui/progress';
+
+const ImageDropzone = ({ onUrlChange, setUploading }: { onUrlChange: (url: string) => void; setUploading: (isUploading: boolean) => void; }) => {
+  const storage = useStorage();
+  const { toast } = useToast();
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+
+  const handleFileChange = (files: FileList | null) => {
+    if (files && files[0]) {
+      handleUpload(files[0]);
+    }
+  };
+
+  const handleUpload = async (file: File) => {
+    if (!storage) {
+        toast({ title: "Storage not available", variant: 'destructive'});
+        return;
+    }
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Invalid File Type', description: 'Please upload an image file.', variant: 'destructive' });
+      return;
+    }
+
+    setUploading(true);
+    setUploadProgress(0);
+    const storageRef = ref(storage, `gallery-images/${Date.now()}-${file.name}`);
+    
+    try {
+      // For progress, we'd need uploadBytesResumable, but for simplicity let's stick to uploadBytes
+      // This is a simplified progress simulation
+      const uploadTask = uploadBytes(storageRef, file);
+      
+      // Simulate progress
+      const interval = setInterval(() => {
+          setUploadProgress(prev => {
+              if (prev === null) return 0;
+              if (prev >= 95) return prev;
+              return prev + 5;
+          });
+      }, 200);
+
+      await uploadTask;
+      clearInterval(interval);
+      setUploadProgress(100);
+
+      const downloadURL = await getDownloadURL(storageRef);
+      onUrlChange(downloadURL);
+      toast({ title: 'Upload Successful', description: 'Image URL has been set.' });
+    } catch (error: any) {
+      toast({ title: 'Upload Failed', description: error.message, variant: 'destructive' });
+      setUploadProgress(null);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setIsDragging(true);
+    } else if (e.type === 'dragleave') {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleUpload(e.dataTransfer.files[0]);
+      e.dataTransfer.clearData();
+    }
+  };
+
+  return (
+    <div className="col-span-3">
+        <label
+            htmlFor="dropzone-file"
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+            className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted/50 ${isDragging ? 'border-primary' : 'border-input'}`}
+        >
+            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
+                <p className="mb-1 text-sm text-muted-foreground">
+                    <span className="font-semibold">Click to upload</span> or drag and drop
+                </p>
+                <p className="text-xs text-muted-foreground">PNG, JPG, GIF up to 10MB</p>
+            </div>
+            <input id="dropzone-file" type="file" className="hidden" onChange={e => handleFileChange(e.target.files)} accept="image/*" />
+        </label>
+        {uploadProgress !== null && (
+            <div className="mt-2">
+                <Progress value={uploadProgress} className="w-full" />
+                <p className="text-sm text-center mt-1">{uploadProgress}%</p>
+            </div>
+        )}
+    </div>
+  )
+};
+
 
 const GalleryItemForm = ({
   item,
@@ -38,6 +145,7 @@ const GalleryItemForm = ({
     itemType: item?.itemType || 'venue',
     imageUrl: item?.imageUrl || '',
   });
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -47,6 +155,10 @@ const GalleryItemForm = ({
   const handleSelectChange = (value: 'venue' | 'competition') => {
     setFormData((prev) => ({ ...prev, itemType: value as 'venue' | 'competition' }));
   };
+
+  const handleUrlChange = useCallback((url: string) => {
+    setFormData(prev => ({...prev, imageUrl: url}));
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,24 +170,32 @@ const GalleryItemForm = ({
       <DialogHeader>
         <DialogTitle>{item ? 'Edit' : 'Add'} Gallery Item</DialogTitle>
         <DialogDescription>
-          {item ? 'Update the details for this gallery item.' : 'Provide an image URL and optional details.'}
+          {item ? 'Update the details for this gallery item.' : 'Upload an image and provide optional details.'}
         </DialogDescription>
       </DialogHeader>
       <div className="grid gap-4 py-4">
         <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="imageUrl" className="text-right">
-            Image URL
-          </Label>
-          <Input id="imageUrl" name="imageUrl" value={formData.imageUrl} onChange={handleChange} className="col-span-3" required />
+          <Label className="text-right">Upload</Label>
+          <ImageDropzone onUrlChange={handleUrlChange} setUploading={setIsUploading} />
         </div>
+        
         {formData.imageUrl && (
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right">Preview</Label>
-            <div className="col-span-3">
+            <Label htmlFor="imageUrl" className="text-right">
+              Image URL
+            </Label>
+            <div className="col-span-3 relative">
+                <Input id="imageUrl" name="imageUrl" value={formData.imageUrl} onChange={handleChange} className="pr-10" required />
+                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => handleUrlChange('')}>
+                    <X className="h-4 w-4" />
+                </Button>
+            </div>
+            <div className="col-start-2 col-span-3">
               <Image src={formData.imageUrl} alt="Preview" width={80} height={60} className="rounded-md object-cover" />
             </div>
           </div>
         )}
+
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="title" className="text-right">
             Title
@@ -104,11 +224,11 @@ const GalleryItemForm = ({
         </div>
       </div>
       <DialogFooter>
-        <Button type="button" variant="secondary" onClick={closeDialog}>
+        <Button type="button" variant="secondary" onClick={closeDialog} disabled={isUploading}>
           Cancel
         </Button>
-        <Button type="submit">
-          Save
+        <Button type="submit" disabled={isUploading || !formData.imageUrl}>
+          {isUploading ? 'Uploading...' : 'Save'}
         </Button>
       </DialogFooter>
     </form>
@@ -184,7 +304,7 @@ export function GalleryManager() {
               <PlusCircle className="mr-2 h-4 w-4" /> Add Item
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="sm:max-w-[625px]">
             <GalleryItemForm 
               item={editingItem} 
               onSave={handleSave} 
