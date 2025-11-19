@@ -27,7 +27,7 @@ const navItems = [
   { href: "/contact", label: "Contact Us" },
 ];
 
-const logoUrl = "https://content.jdmagicbox.com/comp/bangalore/j7/080pxx80.xx80.170522171501.p2j7/logo/b9dfb5894ded08994754593e782a613d.jpg";
+const logoUrl = "/logo.jpg";
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
