@@ -3,7 +3,8 @@
 
 import { useState, useEffect } from 'react';
 import { useFirestore } from '@/firebase';
-import { collection, doc, query, orderBy, getDocs, deleteDoc, addDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, query, orderBy, getDocs } from 'firebase/firestore';
+import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { ClassSchedule } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -161,39 +162,31 @@ export function ClassScheduleManager() {
   }, [firestore]);
 
 
-  const handleSave = async (data: Omit<ClassSchedule, 'id'> | Partial<ClassSchedule>) => {
+  const handleSave = (data: Omit<ClassSchedule, 'id'> | Partial<ClassSchedule>) => {
     if (!firestore) return;
-    try {
-      if (editingSchedule) {
-        const docRef = doc(firestore, 'classSchedules', editingSchedule.id);
-        await updateDoc(docRef, data);
-        toast({ title: 'Success', description: 'Class schedule updated.' });
-      } else {
-        await addDoc(collection(firestore, 'classSchedules'), data);
-        toast({ title: 'Success', description: 'New class added.' });
-      }
-      closeDialog();
-      fetchSchedules(); 
-    } catch (error: any) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+
+    if (editingSchedule) {
+      const docRef = doc(firestore, 'classSchedules', editingSchedule.id);
+      updateDocumentNonBlocking(docRef, data);
+      setSchedules(schedules.map(s => s.id === editingSchedule.id ? { ...s, ...data } : s) as ClassSchedule[]);
+      toast({ title: 'Success', description: 'Class schedule updated.' });
+    } else {
+      const collectionRef = collection(firestore, 'classSchedules');
+      addDocumentNonBlocking(collectionRef, data);
+      toast({ title: 'Success', description: 'New class added.' });
     }
+
+    closeDialog();
+    // Optimistic UI update or refetch can be improved. For now, just refetching.
+    setTimeout(() => fetchSchedules(), 500);
   };
   
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string) => {
     if (!firestore) return;
-    try {
-      const docRef = doc(firestore, 'classSchedules', id);
-      await deleteDoc(docRef);
-      toast({ title: 'Success', description: 'Class schedule deleted.' });
-      setSchedules(prevSchedules => prevSchedules.filter(s => s.id !== id));
-    } catch (error: any) {
-      toast({
-        title: 'Deletion Failed',
-        description: error.message || 'Could not delete class schedule.',
-        variant: 'destructive',
-      });
-      console.error('Error deleting document: ', error);
-    }
+    const docRef = doc(firestore, 'classSchedules', id);
+    deleteDocumentNonBlocking(docRef);
+    setSchedules(prevSchedules => prevSchedules.filter(s => s.id !== id));
+    toast({ title: 'Success', description: 'Class schedule deleted.' });
   };
 
   const openDialog = (schedule?: ClassSchedule) => {
@@ -262,3 +255,5 @@ export function ClassScheduleManager() {
     </div>
   );
 }
+
+    

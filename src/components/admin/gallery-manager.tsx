@@ -3,7 +3,8 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useCollection, useFirestore, useMemoFirebase, useStorage } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, deleteDoc } from 'firebase/firestore';
+import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { ref, uploadBytesResumable, getDownloadURL, UploadTask, deleteObject } from 'firebase/storage';
 import type { GalleryItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -174,7 +175,7 @@ export function GalleryManager() {
         }
     });
 
-    return combined.sort((a,b) => ((b as any).createdAt || 0) - ((a as any).createdAt || 0));
+    return combined.sort((a,b) => ((b as any).createdAt?.seconds || 0) - ((a as any).createdAt?.seconds || 0));
   }, [serverGalleryItems, localUploads]);
 
 
@@ -187,26 +188,28 @@ export function GalleryManager() {
 
     if (editingItem) { // Updating existing item
         const docRef = doc(firestore, 'galleryItems', editingItem.id);
-        await updateDoc(docRef, data);
+        updateDocumentNonBlocking(docRef, data);
         toast({ title: 'Success', description: 'Gallery item updated.' });
     } else { // Creating new item
         const tempId = `local_${Date.now()}`;
-        const newDoc: Omit<GalleryItem, 'id'> & { createdAt: any } = {
+        const newDocData: Omit<GalleryItem, 'id'> & { createdAt: any } = {
           ...data,
           imageUrl: 'uploading', // Placeholder status
           createdAt: serverTimestamp(),
         };
 
         if (file) {
-            const localItem = { ...newDoc, id: tempId, createdAt: Date.now() / 1000 } as GalleryItem;
+            const localItem = { ...newDocData, id: tempId, createdAt: { seconds: Date.now() / 1000 } } as GalleryItem;
             setLocalUploads(prev => [...prev, localItem]);
             setUploadProgress(prev => ({...prev, [tempId]: 0}));
             
-            const docRef = await addDoc(collection(firestore, 'galleryItems'), newDoc);
-            handleUpload(file, docRef.id, tempId);
+            const docRef = await addDocumentNonBlocking(collection(firestore, 'galleryItems'), newDocData);
+            if(docRef) {
+              handleUpload(file, docRef.id, tempId);
+            }
             toast({ title: 'Success', description: 'Gallery item saved. Uploading in background.' });
         } else {
-            await addDoc(collection(firestore, 'galleryItems'), { ...newDoc, imageUrl: 'placeholder' });
+            addDocumentNonBlocking(collection(firestore, 'galleryItems'), { ...newDocData, imageUrl: 'placeholder' });
             toast({ title: 'Success', description: 'Gallery item added without an image.' });
         }
     }
@@ -232,7 +235,7 @@ export function GalleryManager() {
             } else {
               console.error("Upload failed:", error);
               const docRef = doc(firestore, 'galleryItems', docId);
-              updateDoc(docRef, { imageUrl: 'failed' });
+              updateDocumentNonBlocking(docRef, { imageUrl: 'failed' });
               toast({ title: `Upload Failed for ${file.name}`, description: error.message, variant: 'destructive' });
             }
             
@@ -248,7 +251,7 @@ export function GalleryManager() {
         async () => {
             const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
             const docRef = doc(firestore, 'galleryItems', docId);
-            await updateDoc(docRef, { imageUrl: downloadURL });
+            updateDocumentNonBlocking(docRef, { imageUrl: downloadURL });
             
             // Clean up local state
             setLocalUploads(prev => prev.filter(item => item.id !== tempId));
@@ -271,10 +274,9 @@ export function GalleryManager() {
     if (isUploading) {
         const uploadInfo = uploadManager.get(item.id);
         if (uploadInfo) {
-            uploadInfo.uploadTask.cancel();
-            uploadManager.remove(item.id);
+            uploadInfo.uploadTask.cancel(); // This will trigger the error handler in uploadTask which cleans up
             
-            // Delete the firestore doc that was created
+            // Immediately delete the firestore doc that was created for it
             const docRef = doc(firestore, 'galleryItems', uploadInfo.docId);
             await deleteDoc(docRef).catch(e => console.warn("Could not delete temp firestore doc", e));
 
@@ -328,6 +330,7 @@ export function GalleryManager() {
     }
 
     const deletePromises = tasksToCancel.map(taskInfo => {
+      taskInfo.uploadTask.cancel();
       return deleteDoc(doc(firestore, 'galleryItems', taskInfo.docId));
     });
 
@@ -351,7 +354,7 @@ export function GalleryManager() {
     setDialogOpen(false);
   };
   
-  const activeUploadsCount = Object.keys(uploadManager.tasks).length;
+  const activeUploadsCount = localUploads.length;
 
   return (
     <div className="border rounded-lg shadow-lg overflow-hidden bg-card p-4">
@@ -447,3 +450,5 @@ export function GalleryManager() {
     </div>
   );
 }
+
+    
